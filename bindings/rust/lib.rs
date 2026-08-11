@@ -14,7 +14,7 @@
 //! }
 //! "#;
 //! let mut parser = Parser::new();
-//! let language = tree_sitter_kotlin::LANGUAGE;
+//! let language = brokk_tree_sitter_kotlin::LANGUAGE;
 //! parser
 //!     .set_language(&language.into())
 //!     .expect("Error loading Kotlin grammar");
@@ -28,13 +28,13 @@
 use tree_sitter_language::LanguageFn;
 
 extern "C" {
-    fn tree_sitter_kotlin() -> *const ();
+    fn brokk_tree_sitter_kotlin() -> *const ();
 }
 
 /// The tree-sitter [`LanguageFn`][LanguageFn] for this grammar.
 ///
 /// [LanguageFn]: https://docs.rs/tree-sitter-language/*/tree_sitter_language/struct.LanguageFn.html
-pub const LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(tree_sitter_kotlin) };
+pub const LANGUAGE: LanguageFn = unsafe { LanguageFn::from_raw(brokk_tree_sitter_kotlin) };
 
 /// The content of the [`node-types.json`][] file for this grammar.
 ///
@@ -52,5 +52,16 @@ mod tests {
         parser
             .set_language(&super::LANGUAGE.into())
             .expect("Error loading Kotlin parser");
+    }
+
+    #[test]
+    fn test_can_coexist_with_an_unprefixed_kotlin_grammar() {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&super::LANGUAGE.into())
+            .expect("Error loading Brokk Kotlin parser");
+        parser
+            .set_language(&tree_sitter_kotlin_sg::LANGUAGE.into())
+            .expect("Error loading unprefixed Kotlin parser");
     }
 }

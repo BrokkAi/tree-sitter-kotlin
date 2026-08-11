@@ -1,13 +1,18 @@
 # Kotlin Grammar for Tree-sitter
 
-This crate provides a Kotlin grammar for the [tree-sitter](https://tree-sitter.github.io/tree-sitter/) parsing library. To use this crate, add it to the `[dependencies]` section of your `Cargo.toml` file:
+This crate provides Brokk's maintained package of the
+[`fwcd/tree-sitter-kotlin`](https://github.com/fwcd/tree-sitter-kotlin) grammar.
+It prefixes all native symbols so it can coexist with another Kotlin grammar
+crate in one executable.
+
+To use this crate, add it to the `[dependencies]` section of your `Cargo.toml` file:
 
 ```toml
-tree-sitter = "0.23"
-tree-sitter-kotlin = "0.3.9"
+tree-sitter = "0.24"
+brokk-tree-sitter-kotlin = "=0.4.0"
 ```
 
-Typically, you will use the `language` function to add this grammar to a tree-sitter [`Parser`](https://docs.rs/tree-sitter/*/tree_sitter/struct.Parser.html), and then use the parser to parse some code:
+Typically, use the `LANGUAGE` constant with a tree-sitter [`Parser`](https://docs.rs/tree-sitter/*/tree_sitter/struct.Parser.html):
 
 ```rust
 let code = r#"
@@ -16,7 +21,9 @@ let code = r#"
     val y: Int
   )
 "#;
-let mut parser = Parser::new();
-parser.set_language(&tree_sitter_kotlin::language()).expect("Error loading Kotlin grammar");
+let mut parser = tree_sitter::Parser::new();
+parser
+    .set_language(&brokk_tree_sitter_kotlin::LANGUAGE.into())
+    .expect("Error loading Kotlin grammar");
 let parsed = parser.parse(code, None);
 ```
