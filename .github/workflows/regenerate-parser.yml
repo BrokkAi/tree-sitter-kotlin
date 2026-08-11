@@ -6,22 +6,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Configure Git user
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
       - name: Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '18'
+          node-version: '24'
+          cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Generate parser
         run: npm run generate
       - name: Commit the updated parser
         run: |
+          if git diff --quiet -- src; then
+            echo "Generated parser is current"
+            exit 0
+          fi
           git add src
           git commit -m "Regenerate the parser ($(git rev-parse --short HEAD))"
           git push

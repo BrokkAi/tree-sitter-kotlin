@@ -12,12 +12,12 @@ readme = "bindings/rust/README.md"
 
 build = "bindings/rust/build.rs"
 include = [
-  "LICENSE",
-  "bindings/rust/*",
-  "grammar.js",
-  "queries/*",
-  "src/*",
-  "tree-sitter.json",
+  "/LICENSE",
+  "/bindings/rust/*",
+  "/grammar.js",
+  "/queries/*",
+  "/src/*",
+  "/tree-sitter.json",
 ]
 
 [lib]
