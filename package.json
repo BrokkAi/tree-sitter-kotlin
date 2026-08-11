@@ -1,7 +1,7 @@
 {
   "name": "tree-sitter-kotlin",
   "version": "0.4.0",
-  "description": "Tree-sitter grammar for Kotlin",
+  "description": "Brokk-maintained Tree-sitter grammar for Kotlin",
   "main": "bindings/node",
   "types": "bindings/node",
   "scripts": {
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fwcd/tree-sitter-kotlin.git"
+    "url": "git+https://github.com/BrokkAi/tree-sitter-kotlin.git"
   },
   "keywords": [
     "tree-sitter",
@@ -39,12 +39,15 @@
     "src/**"
   ],
   "author": "fwcd",
+  "maintainers": [
+    "Brokk"
+  ],
   "license": "MIT",
   "gypfile": true,
   "bugs": {
-    "url": "https://github.com/fwcd/tree-sitter-kotlin/issues"
+    "url": "https://github.com/BrokkAi/tree-sitter-kotlin/issues"
   },
-  "homepage": "https://github.com/fwcd/tree-sitter-kotlin#readme",
+  "homepage": "https://github.com/BrokkAi/tree-sitter-kotlin#readme",
   "dependencies": {
     "node-addon-api": "^8.2.2",
     "node-gyp-build": "^4.8.2"

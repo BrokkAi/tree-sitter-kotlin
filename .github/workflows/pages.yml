@@ -1,0 +1,80 @@
+name: Deploy playground to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    env:
+      EMSCRIPTEN_VERSION: '3.1.55'
+    steps:
+      - name: Check out the Brokk fork
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out the upstream playground
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: fwcd/tree-sitter-kotlin
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+      - name: Build the current grammar
+        run: |
+          npm ci
+          npm run generate
+          npm run build-wasm
+      - name: Assemble the Brokk playground
+        run: |
+          version=$(node -p "require('./package.json').version")
+          runtime_version=$(node -p "require('./node_modules/tree-sitter-cli/package.json').version")
+
+          rm -rf site/.git site/assets/tree-sitter-kotlin-* site/assets/web-tree-sitter-*
+          mkdir -p "site/assets/tree-sitter-kotlin-$version"
+          cp tree-sitter-kotlin.wasm "site/assets/tree-sitter-kotlin-$version/"
+
+          cd "${RUNNER_TEMP}"
+          npm pack "web-tree-sitter@$runtime_version"
+          mkdir web-tree-sitter
+          tar xzf web-tree-sitter-*.tgz -C web-tree-sitter
+          cd "${GITHUB_WORKSPACE}"
+          mkdir -p "site/assets/web-tree-sitter-$runtime_version"
+          cp "${RUNNER_TEMP}/web-tree-sitter/package/tree-sitter.js" "site/assets/web-tree-sitter-$runtime_version/"
+          cp "${RUNNER_TEMP}/web-tree-sitter/package/tree-sitter.wasm" "site/assets/web-tree-sitter-$runtime_version/"
+
+          sed -i "s|https://github.com/fwcd/tree-sitter-kotlin|https://github.com/BrokkAi/tree-sitter-kotlin|g" site/index.html
+          sed -i "s|web-tree-sitter-[^/]*/tree-sitter\.js|web-tree-sitter-$runtime_version/tree-sitter.js|g" site/index.html
+          sed -i "s|\(LANGUAGE_BASE_URL = \"\)[^\"]*\(\"\)|\1assets/tree-sitter-kotlin-$version\2|g" site/index.html
+          sed -i "s|\(<span class=\"version\">\)[^<]*\(</span>\)|\1$version\2|g" site/index.html
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Upload the playground
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

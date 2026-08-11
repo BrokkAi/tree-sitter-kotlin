@@ -3,7 +3,7 @@ $(error Windows is not supported)
 endif
 
 LANGUAGE_NAME := tree-sitter-kotlin
-HOMEPAGE_URL := https://github.com/fwcd/tree-sitter-kotlin
+HOMEPAGE_URL := https://github.com/BrokkAi/tree-sitter-kotlin
 VERSION := 0.3.9
 
 # repository

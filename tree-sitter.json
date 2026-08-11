@@ -16,14 +16,17 @@
   "metadata": {
     "version": "0.4.0",
     "license": "MIT",
-    "description": "Tree-sitter grammar for Kotlin",
+    "description": "Brokk-maintained Tree-sitter grammar for Kotlin",
     "authors": [
       {
         "name": "fwcd"
+      },
+      {
+        "name": "Brokk"
       }
     ],
     "links": {
-      "repository": "git+https://github.com/fwcd/tree-sitter-kotlin.git"
+      "repository": "git+https://github.com/BrokkAi/tree-sitter-kotlin.git"
     }
   },
   "bindings": {

@@ -1,10 +1,19 @@
-# Kotlin Grammar for Tree-sitter
+# Brokk's Kotlin Grammar for Tree-sitter
 
-[![Build](https://github.com/fwcd/tree-sitter-kotlin/actions/workflows/build.yml/badge.svg)](https://github.com/fwcd/tree-sitter-kotlin/actions/workflows/build.yml)
+[![Build](https://github.com/BrokkAi/tree-sitter-kotlin/actions/workflows/build.yml/badge.svg)](https://github.com/BrokkAi/tree-sitter-kotlin/actions/workflows/build.yml)
 [![NPM](https://img.shields.io/npm/v/tree-sitter-kotlin)](https://www.npmjs.com/package/tree-sitter-kotlin)
-[![crates.io](https://img.shields.io/crates/v/tree-sitter-kotlin)](https://crates.io/crates/tree-sitter-kotlin)
+[![crates.io](https://img.shields.io/crates/v/brokk-tree-sitter-kotlin)](https://crates.io/crates/brokk-tree-sitter-kotlin)
 
-[Kotlin](https://kotlinlang.org) language grammar for [Tree-sitter](http://tree-sitter.github.io/tree-sitter/). You can try it out directly [on the web](https://fwcd.github.io/tree-sitter-kotlin).
+This is the **Brokk-owned and maintained fork** of
+[`fwcd/tree-sitter-kotlin`](https://github.com/fwcd/tree-sitter-kotlin), a
+[Kotlin](https://kotlinlang.org) grammar for
+[Tree-sitter](https://tree-sitter.github.io/tree-sitter/). Brokk maintains this
+fork for use in its code-intelligence tooling and publishes the Rust package as
+[`brokk-tree-sitter-kotlin`](https://crates.io/crates/brokk-tree-sitter-kotlin).
+Unless you specifically need Brokk's changes, you may prefer the upstream
+project.
+
+You can try this fork directly in [Brokk's web playground](https://brokkai.github.io/tree-sitter-kotlin/).
 
 ![Icon](Icon128.png)
 
@@ -157,7 +166,7 @@ After compiling the grammar to WebAssembly, you can invoke
 
 >`npm run playground`
 
-to launch an interactive editing environment that displays the parsed syntax tree on-the-fly in the browser. You can also view a deployed version of this playground [on the web](https://fwcd.github.io/tree-sitter-kotlin).
+to launch an interactive editing environment that displays the parsed syntax tree on-the-fly in the browser. You can also use [Brokk's deployed playground](https://brokkai.github.io/tree-sitter-kotlin/).
 
 ![Screenshot](playground-screenshot.png)
 

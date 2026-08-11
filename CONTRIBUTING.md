@@ -1,5 +1,11 @@
 # Contributing to tree-sitter-kotlin
 
+This repository is Brokk's maintained fork of
+[`fwcd/tree-sitter-kotlin`](https://github.com/fwcd/tree-sitter-kotlin).
+Contributions here should target Brokk's fork and its code-intelligence use
+cases; changes intended for the general upstream grammar may be better proposed
+upstream first.
+
 ## Development Setup
 
 ```bash
