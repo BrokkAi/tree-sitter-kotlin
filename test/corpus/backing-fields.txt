@@ -389,3 +389,146 @@ class Ann {
         (variable_declaration
           (simple_identifier))
         (integer_literal)))))
+
+================================================================================
+Same-line backing-field accessors without semicolons
+================================================================================
+
+class Counter {
+    var count: Int field = 1 get() = field set(value) { field = value }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal))
+        (getter
+          (function_body
+            (simple_identifier)))
+        (setter
+          (parameter_with_optional_type
+            (simple_identifier))
+          (function_body
+            (statements
+              (assignment
+                (directly_assignable_expression
+                  (simple_identifier))
+                (simple_identifier)))))))))
+
+================================================================================
+Same-line backing-field setter without semicolon
+================================================================================
+
+class Counter {
+    var count: Int field = 1 set(value) { field = value }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal))
+        (setter
+          (parameter_with_optional_type
+            (simple_identifier))
+          (function_body
+            (statements
+              (assignment
+                (directly_assignable_expression
+                  (simple_identifier))
+                (simple_identifier)))))))))
+
+================================================================================
+Same-line delegated-property getter without semicolon
+================================================================================
+
+class Counter {
+    val delegated by lazy { 1 } get() = delegated
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (property_delegate
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (annotated_lambda
+                (lambda_literal
+                  (statements
+                    (integer_literal)))))))
+        (getter
+          (function_body
+            (simple_identifier)))))))
+
+================================================================================
+Accessor soft keywords remain infix operators
+================================================================================
+
+fun expressions() {
+    val a = one get two
+    val b = one set two
+    one get (two)
+    one set (two)
+}
+
+---
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (infix_expression
+            (simple_identifier)
+            (simple_identifier)
+            (simple_identifier)))
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (infix_expression
+            (simple_identifier)
+            (simple_identifier)
+            (simple_identifier)))
+        (infix_expression
+          (simple_identifier)
+          (simple_identifier)
+          (parenthesized_expression
+            (simple_identifier)))
+        (infix_expression
+          (simple_identifier)
+          (simple_identifier)
+          (parenthesized_expression
+            (simple_identifier)))))))

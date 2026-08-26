@@ -18,6 +18,7 @@ enum TokenType {
   INTERPOLATION_IDENTIFIER_START,
   BY_DELEGATION_HINT,
   BACKING_FIELD_HINT,
+  ACCESSOR_START,
 };
 
 /* Pretty much all of this code is taken from the Julia tree-sitter
@@ -972,6 +973,42 @@ static bool scan_import_dot(TSLexer *lexer) {
   return true;
 }
 
+// Emit a zero-width boundary before an accessor-shaped `get (` or `set (`.
+// Without a distinct lookahead, `get`/`set` can be shifted as the infix
+// operator of a preceding delegate or explicit-backing-field expression.
+// Newlines are deliberately not skipped: ASI owns the newline-separated case.
+static bool scan_accessor_start(TSLexer *lexer) {
+  while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+         lexer->lookahead == '\f') {
+    skip(lexer);
+  }
+  lexer->mark_end(lexer);
+
+  const char *keyword;
+  if (lexer->lookahead == 'g') {
+    keyword = "get";
+  } else if (lexer->lookahead == 's') {
+    keyword = "set";
+  } else {
+    return false;
+  }
+
+  for (unsigned i = 0; i < 3; i++) {
+    if (lexer->lookahead != keyword[i]) return false;
+    skip(lexer);
+  }
+  if (is_word_char(lexer->lookahead)) return false;
+
+  while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+         lexer->lookahead == '\f') {
+    skip(lexer);
+  }
+  if (lexer->lookahead != '(') return false;
+
+  lexer->result_symbol = ACCESSOR_START;
+  return true;
+}
+
 bool tree_sitter_kotlin_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
   // BY_DELEGATION_HINT is declared in the grammar (optional, before `by` in
   // explicit_delegation and property_delegate) purely so it appears in
@@ -982,6 +1019,11 @@ bool tree_sitter_kotlin_external_scanner_scan(void *payload, TSLexer *lexer, con
     // if we fail to find an automatic semicolon, it's still possible that we may
     // want to lex a string or comment later
     if (ret) return ret;
+  }
+
+  if (valid_symbols[ACCESSOR_START] && !valid_symbols[STRING_CONTENT] &&
+      scan_accessor_start(lexer)) {
+    return true;
   }
 
   // Match dots in import identifiers, refusing dots that would cause

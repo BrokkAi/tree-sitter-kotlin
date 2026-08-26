@@ -180,6 +180,7 @@ module.exports = grammar({
     $._interpolation_identifier_start,
     $._by_delegation_hint,
     $._backing_field_hint,
+    $._accessor_start,
   ],
 
   extras: $ => [
@@ -576,10 +577,17 @@ module.exports = grammar({
         $.backing_field
       )),
       optional(';'),
-      optional(choice(
-        seq($.getter, optional($.setter)),
-        seq($.setter, optional($.getter)),
-      ))
+      optional($._property_accessors)
+    )),
+
+    // Keeping the accessor permutations behind one rule prevents the property
+    // prefix from being duplicated across both alternatives in the LR tables.
+    _property_accessors: $ => prec.right(seq(
+      optional($._accessor_start),
+      choice(
+        seq($.getter, optional(seq(optional($._accessor_start), $.setter))),
+        seq($.setter, optional(seq(optional($._accessor_start), $.getter))),
+      )
     )),
 
     property_delegate: $ => seq(optional($._by_delegation_hint), "by", $._expression),
