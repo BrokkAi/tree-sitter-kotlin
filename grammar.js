@@ -179,6 +179,7 @@ module.exports = grammar({
     $._interpolation_expression_start,
     $._interpolation_identifier_start,
     $._by_delegation_hint,
+    $._backing_field_hint,
   ],
 
   extras: $ => [
@@ -565,9 +566,14 @@ module.exports = grammar({
       optional(seq(field("receiver", $.receiver_type), optional('.'))),
       choice($.variable_declaration, $.multi_variable_declaration),
       optional($.type_constraints),
+      // Kotlin 2.2 explicit backing field (KEEP-0430) as an alternative to
+      // an initializer/delegate: the compiler forbids combining them, and
+      // scoping the backing field to the initializer-free form keeps the
+      // hint token's blast radius (and the parse tables) small.
       optional(choice(
         seq("=", $._expression),
-        $.property_delegate
+        $.property_delegate,
+        $.backing_field
       )),
       optional(';'),
       optional(choice(
@@ -577,6 +583,19 @@ module.exports = grammar({
     )),
 
     property_delegate: $ => seq(optional($._by_delegation_hint), "by", $._expression),
+
+    // Explicit backing field: `field = expr` or `field: Type = expr`.
+    // `field` stays a soft keyword (it remains a simple_identifier); the
+    // optional hint token mirrors property_delegate: it is never emitted,
+    // but its presence in valid_symbols tells the external scanner not to
+    // insert an automatic semicolon before a `field =` / `field: T =` line.
+    backing_field: $ => seq(
+      optional($._backing_field_hint),
+      "field",
+      optional(seq(":", $._type)),
+      "=",
+      $._expression
+    ),
 
     destructuring_declaration: $ => prec.right(seq(
       optional($.modifiers),

@@ -17,6 +17,7 @@ enum TokenType {
   INTERPOLATION_EXPRESSION_START,
   INTERPOLATION_IDENTIFIER_START,
   BY_DELEGATION_HINT,
+  BACKING_FIELD_HINT,
 };
 
 /* Pretty much all of this code is taken from the Julia tree-sitter
@@ -482,6 +483,26 @@ static bool check_annotation_then_constructor(TSLexer *lexer) {
   return check_word(lexer, "constructor", 11);
 }
 
+// After consuming "fi", check whether the word is exactly "field" and is
+// followed (after whitespace and comments) by '=' or ':' — the shape of a
+// Kotlin 2.2 explicit backing field (KEEP-0430), either `field = expr` or
+// `field: Type = expr`. Requiring the '=' / ':' lookahead preserves the
+// ordinary statement parse for other uses of `field` as an identifier
+// (e.g. a newline before `field.foo()` still gets a semicolon inserted).
+// Uses skip() so characters are not included in the current token.
+static bool check_backing_field(TSLexer *lexer) {
+  if (!check_word(lexer, "eld", 3)) return false;
+  if (!skip_whitespace_and_comments(lexer)) return false;
+  if (lexer->lookahead == '=') return true;
+  // ':' starts the explicit-type form, but '::' is a callable reference
+  // (e.g. `field::class`), which keeps the statement parse.
+  if (lexer->lookahead == ':') {
+    skip(lexer);
+    return lexer->lookahead != ':';
+  }
+  return false;
+}
+
 static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) {
   lexer->result_symbol = AUTOMATIC_SEMICOLON;
   lexer->mark_end(lexer);
@@ -618,7 +639,19 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
                   scan_for_word(lexer, "y", 1)) return false;
               return true;
             case 'f':
-              if (scan_for_word(lexer, "inally", 6)) return false;
+              skip(lexer); // consume 'f'
+              if (lexer->lookahead == 'i') {
+                skip(lexer); // consume 'i'
+                if (lexer->lookahead == 'e' &&
+                    valid_symbols[BACKING_FIELD_HINT] &&
+                    !valid_symbols[STRING_CONTENT] &&
+                    check_backing_field(lexer)) {
+                  // Explicit backing field after the comment — no ASI.
+                  return false;
+                }
+                // "fi" consumed; "finally" leaves "nally" to match.
+                return !check_word(lexer, "nally", 5);
+              }
               return true;
             default:
               return true;
@@ -737,6 +770,25 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
                 }
               }
               return true;
+            case 'f':
+              // Possible explicit backing field (KEEP-0430) after the
+              // comment. Only the bare word "field" is checked here so that
+              // mark_end stays before it; the full `field =` / `field: T =`
+              // shape check happens when the ASI decision is re-taken at
+              // the `field` token on the next scan.
+              if (valid_symbols[BACKING_FIELD_HINT] &&
+                  !valid_symbols[STRING_CONTENT]) {
+                lexer->mark_end(lexer);
+                skip(lexer); // consume 'f'
+                if (lexer->lookahead == 'i') {
+                  skip(lexer); // consume 'i'
+                  if (check_word(lexer, "eld", 3)) {
+                    lexer->result_symbol = MULTILINE_COMMENT;
+                    return true;
+                  }
+                }
+              }
+              return true;
             default:
               // the original position (P0, before the comment), so the
               // ASI token is zero-width. The block comment will be
@@ -840,9 +892,27 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
         // Not in constructor context — check for 'catch'
         return !scan_for_word(lexer, "atch", 4);
 
-      // Don't insert a semicolon before finally (continues try_expression)
+      // Don't insert a semicolon before finally (continues try_expression),
+      // and don't insert one before `field =` / `field: T =` when the parser
+      // is in a position where an explicit backing field (KEEP-0430) can
+      // follow a property declaration. The hint check comes first because
+      // `field` and `finally` share the "fi" prefix; a failed backing-field
+      // check still falls through to the "finally" check on the remaining
+      // characters, which can only fail for words that are not "finally".
       case 'f':
-        return !scan_for_word(lexer, "inally", 6);
+        skip(lexer); // consume 'f'
+        if (lexer->lookahead != 'i') return true;
+        skip(lexer); // consume 'i'
+        if (lexer->lookahead == 'e' &&
+            valid_symbols[BACKING_FIELD_HINT] &&
+            !valid_symbols[STRING_CONTENT] &&
+            check_backing_field(lexer)) {
+          return false;
+        }
+        // "fi" consumed; "finally" leaves "nally" to match. Any other word
+        // (including a `field` without the backing-field shape) fails here
+        // and gets a semicolon.
+        return !check_word(lexer, "nally", 5);
 
       // Don't insert a semicolon before an annotation that precedes 'constructor'
       // e.g. `class Foo\n@Bar\nconstructor(...)` — the @Bar is a constructor modifier
