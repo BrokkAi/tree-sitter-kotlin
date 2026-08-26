@@ -466,8 +466,11 @@ static bool check_annotation_then_constructor(TSLexer *lexer) {
         }
       }
     }
-    // Skip whitespace and newlines between annotations or before constructor
-    while (iswspace(lexer->lookahead)) skip(lexer);
+    // Skip whitespace, newlines, and comments between annotations or before
+    // constructor. A trailing comment must not defeat the lookahead
+    // (BrokkAi/bifrost-dev#2695). A bare '/' cannot precede 'constructor',
+    // so give up if the helper stops at one.
+    if (!skip_whitespace_and_comments(lexer)) return false;
   }
   // Allow an optional visibility modifier before 'constructor'
   if (is_word_char(lexer->lookahead) && lexer->lookahead != 'c') {
