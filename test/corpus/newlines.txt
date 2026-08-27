@@ -435,3 +435,224 @@ val y = 2
     (variable_declaration
       (simple_identifier))
     (integer_literal)))
+
+================================================================================
+ASI before statement-initial paren (lirp shape)
+================================================================================
+
+fun f() {
+    val t1 = 5
+    (t1 as X).title = "C"
+    "b"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (integer_literal))
+        (assignment
+          (directly_assignable_expression
+            (parenthesized_expression
+              (as_expression
+                (simple_identifier)
+                (user_type
+                  (type_identifier))))
+            (navigation_suffix
+              (simple_identifier)))
+          (string_literal
+            (string_content)))
+        (string_literal
+          (string_content))))))
+
+================================================================================
+Explicit semicolon is equivalent to ASI before statement-initial paren
+================================================================================
+
+fun f() {
+    val t1 = 5;
+    (t1 as X).title = "C"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (integer_literal))
+        (assignment
+          (directly_assignable_expression
+            (parenthesized_expression
+              (as_expression
+                (simple_identifier)
+                (user_type
+                  (type_identifier))))
+            (navigation_suffix
+              (simple_identifier)))
+          (string_literal
+            (string_content)))))))
+
+================================================================================
+ASI before statement-initial paren in class-body lambda (StringSpec shape)
+================================================================================
+
+class ProjectionTest : StringSpec({
+    "mutate grouping field" {
+        val projection = projectionOf({ playlist.audioItems }, { it.title })
+
+        (t1 as MutableAudioItem).title = "Classical"
+        playlist.audioItems.remove(t1)
+    }
+})
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (delegation_specifier
+      (constructor_invocation
+        (user_type
+          (type_identifier))
+        (value_arguments
+          (value_argument
+            (lambda_literal
+              (statements
+                (call_expression
+                  (string_literal
+                    (string_content))
+                  (call_suffix
+                    (annotated_lambda
+                      (lambda_literal
+                        (statements
+                          (property_declaration
+                            (binding_pattern_kind)
+                            (variable_declaration
+                              (simple_identifier))
+                            (call_expression
+                              (simple_identifier)
+                              (call_suffix
+                                (value_arguments
+                                  (value_argument
+                                    (lambda_literal
+                                      (statements
+                                        (navigation_expression
+                                          (simple_identifier)
+                                          (navigation_suffix
+                                            (simple_identifier))))))
+                                  (value_argument
+                                    (lambda_literal
+                                      (statements
+                                        (navigation_expression
+                                          (simple_identifier)
+                                          (navigation_suffix
+                                            (simple_identifier))))))))))
+                          (assignment
+                            (directly_assignable_expression
+                              (parenthesized_expression
+                                (as_expression
+                                  (simple_identifier)
+                                  (user_type
+                                    (type_identifier))))
+                              (navigation_suffix
+                                (simple_identifier)))
+                            (string_literal
+                              (string_content)))
+                          (call_expression
+                            (navigation_expression
+                              (navigation_expression
+                                (simple_identifier)
+                                (navigation_suffix
+                                  (simple_identifier)))
+                              (navigation_suffix
+                                (simple_identifier)))
+                            (call_suffix
+                              (value_arguments
+                                (value_argument
+                                  (simple_identifier))))))))))))))))))
+
+================================================================================
+Bare parenthesized identifier at statement start (known limitation)
+================================================================================
+
+fun f() {
+    (t1).title = "C"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (destructuring_declaration
+          (multi_variable_declaration
+            (variable_declaration
+              (simple_identifier)))
+          (ERROR)
+          (string_literal
+            (string_content)))))))
+
+================================================================================
+Continuations across newlines that stay legal (regression pins)
+================================================================================
+
+val x:
+    (Int) -> Unit = f
+
+class A :
+    B()
+
+fun g() {
+    x =
+        (1)
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier)
+      (function_type
+        (function_type_parameters
+          (user_type
+            (type_identifier)))
+        (user_type
+          (type_identifier))))
+    (simple_identifier))
+  (class_declaration
+    (type_identifier)
+    (delegation_specifier
+      (constructor_invocation
+        (user_type
+          (type_identifier))
+        (value_arguments))))
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (assignment
+          (directly_assignable_expression
+            (simple_identifier))
+          (parenthesized_expression
+            (integer_literal)))))))

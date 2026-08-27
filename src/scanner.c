@@ -544,11 +544,18 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
       case '=':
       case '{':
       case '[':
-      case '(':
       case '?':
       case '|':
       case '&':
         return false;
+
+      // Insert a semicolon before '(': Kotlin requires a call's argument
+      // list on the callee's line, so a newline before '(' always ends the
+      // statement (BrokkAi/bifrost-dev#2710). Without this, a
+      // statement-initial parenthesized expression was misread as call
+      // continuation of the previous line.
+      case '(':
+        return true;
 
       // Handle `/` — could be division, line comment, or block comment.
       // For division: no ASI (continuation operator).
@@ -576,8 +583,12 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
           switch (lexer->lookahead) {
             case '.': case ',': case ':': case '*': case '%':
             case '>': case '<': case '=': case '{': case '[':
-            case '(': case '?': case '|': case '&': case '/':
+            case '?': case '|': case '&': case '/':
               return false;
+            case '(':
+              // Statement-initial paren: insert ASI (call parens must be on
+              // the callee's line). See the main switch below.
+              return true;
             case '!':
               skip(lexer);
               if (lexer->lookahead == '=') return false;
@@ -664,11 +675,17 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
           switch (lexer->lookahead) {
             case '.': case ',': case ':': case '%':
             case '>': case '<': case '=': case '{': case '[':
-            case '(': case '?': case '|': case '&': case '/':
+            case '?': case '|': case '&': case '/':
             case '*':
               // Continuation operator — produce MULTILINE_COMMENT.
               lexer->mark_end(lexer);
               lexer->result_symbol = MULTILINE_COMMENT;
+              return true;
+            case '(':
+              // Statement-initial paren: not a continuation. Produce ASI at
+              // the original position (call parens must be on the callee's
+              // line); the block comment is re-scanned as MULTILINE_COMMENT
+              // on the next parse step, like the default case.
               return true;
             case '!':
               // mark_end before consuming '!' so it's not swallowed.
