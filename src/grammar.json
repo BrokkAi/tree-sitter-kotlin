@@ -721,8 +721,13 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "modifiers"
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_class_parameter_modifiers"
+              },
+              "named": true,
+              "value": "modifiers"
             },
             {
               "type": "BLANK"
@@ -775,6 +780,34 @@
           ]
         }
       ]
+    },
+    "_class_parameter_modifiers": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "annotation"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "visibility_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "inheritance_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "member_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "parameter_modifier"
+          }
+        ]
+      }
     },
     "_delegation_specifiers": {
       "type": "PREC_LEFT",

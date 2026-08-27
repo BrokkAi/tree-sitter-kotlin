@@ -1165,3 +1165,141 @@ class Second {}
   (class_declaration
     (type_identifier)
     (class_body)))
+
+================================================================================
+Vararg parameter named like a class modifier
+================================================================================
+
+// `data`, `inner` and `value` are class modifiers elsewhere but ordinary
+// identifiers as parameter names (BrokkAi/bifrost-dev#2735).
+
+private open class A(vararg data: Int)
+
+open class B(vararg data: Int)
+
+private class C(vararg data: Int) : R(x)
+
+data class D(vararg data: Int)
+
+private open class E(vararg inner: Int, vararg value: Int)
+
+---
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (class_declaration
+    (modifiers
+      (visibility_modifier)
+      (inheritance_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (modifiers
+      (inheritance_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (modifiers
+      (visibility_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier))))
+    (delegation_specifier
+      (constructor_invocation
+        (user_type
+          (type_identifier))
+        (value_arguments
+          (value_argument
+            (simple_identifier))))))
+  (class_declaration
+    (modifiers
+      (class_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (modifiers
+      (visibility_modifier)
+      (inheritance_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+Vararg data-named parameter with delegation (detekt TestRule)
+================================================================================
+
+private open class TestRule(vararg data: Pair<String, Any>) : Rule(TestConfig(*data), "description")
+
+---
+
+(source_file
+  (class_declaration
+    (modifiers
+      (visibility_modifier)
+      (inheritance_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)
+          (type_arguments
+            (type_projection
+              (user_type
+                (type_identifier)))
+            (type_projection
+              (user_type
+                (type_identifier)))))))
+    (delegation_specifier
+      (constructor_invocation
+        (user_type
+          (type_identifier))
+        (value_arguments
+          (value_argument
+            (call_expression
+              (simple_identifier)
+              (call_suffix
+                (value_arguments
+                  (value_argument
+                    (spread_expression
+                      (simple_identifier)))))))
+          (value_argument
+            (string_literal
+              (string_content))))))))

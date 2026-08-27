@@ -305,13 +305,29 @@ module.exports = grammar({
     binding_pattern_kind: $ => choice("val", "var"),
 
     class_parameter: $ => seq(
-      optional($.modifiers),
+      optional(alias($._class_parameter_modifiers, $.modifiers)),
       optional($.binding_pattern_kind),
       $.simple_identifier,
       ":",
       $._type,
       optional(seq("=", $._expression))
     ),
+
+    // Primary-constructor parameters take a narrower modifier set than the
+    // general `modifiers` rule: annotations, visibility, inheritance and
+    // member modifiers (real-world usage such as `final override val x`),
+    // and `vararg`/`noinline`/`crossinline` — but never class modifiers.
+    // The general rule let a parameter named `data`/`inner`/`value` be read
+    // as a class_modifier after `vararg`, swallowing the parameter name and
+    // collapsing the whole declaration (BrokkAi/bifrost-dev#2735). Aliased
+    // to `modifiers` at the use site to keep the CST shape stable.
+    _class_parameter_modifiers: $ => repeat1(choice(
+      $.annotation,
+      $.visibility_modifier,
+      $.inheritance_modifier,
+      $.member_modifier,
+      $.parameter_modifier
+    )),
 
     _delegation_specifiers: $ => prec.left(sep1(
       $.delegation_specifier,
