@@ -1055,11 +1055,79 @@
             "name": "user_type"
           },
           {
-            "type": "SYMBOL",
-            "name": "value_arguments"
+            "type": "ALIAS",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_annotation_value_arguments"
+            },
+            "named": true,
+            "value": "value_arguments"
           }
         ]
       }
+    },
+    "_annotation_value_arguments": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_annotation_args_paren"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "SEQ",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "value_argument"
+                    },
+                    {
+                      "type": "REPEAT",
+                      "content": {
+                        "type": "SEQ",
+                        "members": [
+                          {
+                            "type": "STRING",
+                            "value": ","
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "value_argument"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": ","
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
     },
     "_annotated_delegation_specifier": {
       "type": "SEQ",
@@ -7940,6 +8008,10 @@
     {
       "type": "SYMBOL",
       "name": "_accessor_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_annotation_args_paren"
     }
   ],
   "inline": [],

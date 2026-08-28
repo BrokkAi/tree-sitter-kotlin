@@ -181,6 +181,7 @@ module.exports = grammar({
     $._by_delegation_hint,
     $._backing_field_hint,
     $._accessor_start,
+    $._annotation_args_paren,
   ],
 
   extras: $ => [
@@ -391,10 +392,31 @@ module.exports = grammar({
 
     // Annotation-scoped variant with prec(1) to resolve the shift/reduce
     // conflict at `user_type • (` — always shift (consume `(` as constructor
-    // args). This matches Kotlin semantics where `(` after an annotation name
-    // is always constructor arguments. Scoped here rather than on the shared
-    // constructor_invocation to avoid changing delegation_specifier behavior.
-    _annotation_constructor_invocation: $ => prec(1, seq($.user_type, $.value_arguments)),
+    // args). Scoped here rather than on the shared constructor_invocation to
+    // avoid changing delegation_specifier behavior. The argument list's open
+    // paren is a distinct external token (BrokkAi/bifrost-dev#2758): the
+    // scanner emits it only when the paren group is NOT a function type, so
+    // `@Composable () -> Unit` binds the parens to the function type instead
+    // of to the annotation.
+    _annotation_constructor_invocation: $ => prec(1, seq(
+      $.user_type,
+      alias($._annotation_value_arguments, $.value_arguments)
+    )),
+
+    // Structurally identical to value_arguments, but opens with the external
+    // _annotation_args_paren so the scanner can refuse the annotation-args
+    // reading in front of a function type. Aliased to value_arguments at the
+    // use site to keep the CST shape stable.
+    _annotation_value_arguments: $ => seq(
+      $._annotation_args_paren,
+      optional(
+        seq(
+          sep1($.value_argument, ","),
+          optional(","),
+        )
+      ),
+      ")"
+    ),
 
     _annotated_delegation_specifier: $ => seq(repeat($.annotation), $.delegation_specifier),
 
