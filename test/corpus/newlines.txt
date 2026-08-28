@@ -656,3 +656,31 @@ fun g() {
             (simple_identifier))
           (parenthesized_expression
             (integer_literal)))))))
+
+================================================================================
+ASI still fires before non-constructor parens after a class header
+================================================================================
+
+class Door
+(t1 as X).title = "C"
+
+class Empty
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (class_declaration
+    (type_identifier))
+  (assignment
+    (directly_assignable_expression
+      (parenthesized_expression
+        (as_expression
+          (simple_identifier)
+          (user_type
+            (type_identifier))))
+      (navigation_suffix
+        (simple_identifier)))
+    (string_literal
+      (string_content)))
+  (class_declaration
+    (type_identifier)))

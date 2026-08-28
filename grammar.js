@@ -186,6 +186,7 @@ module.exports = grammar({
     $._backing_field_hint,
     $._accessor_start,
     $._annotation_args_paren,
+    $._constructor_paren_hint,
   ],
 
   extras: $ => [
@@ -298,6 +299,10 @@ module.exports = grammar({
 
     primary_constructor: $ => seq(
       optional(seq(optional($.modifiers), $._primary_constructor_keyword)),
+      // Never emitted; its presence in valid_symbols tells the ASI scanner
+      // that a '(' can continue this class declaration's primary constructor
+      // on the next line (BrokkAi/bifrost-dev#2762).
+      optional($._constructor_paren_hint),
       $._class_parameters
     ),
 
