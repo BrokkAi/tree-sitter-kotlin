@@ -1,0 +1,249 @@
+================================================================================
+Context parameter on a top-level function
+================================================================================
+
+context(ctx: Foo) fun f() {}
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body)))
+
+================================================================================
+Context parameter on a member function
+================================================================================
+
+class A {
+    context(ctx: Foo) fun f(): Int = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (function_declaration
+        (modifiers
+          (context_parameters
+            (context_parameter
+              (parameter
+                (simple_identifier)
+                (user_type
+                  (type_identifier))))))
+        (simple_identifier)
+        (function_value_parameters)
+        (user_type
+          (type_identifier))
+        (function_body
+          (integer_literal))))))
+
+================================================================================
+Context parameter named context with modifiers (ktor shape)
+================================================================================
+
+class A {
+    context(context: IrPluginContext)
+    override fun asIrType(): IrType? = null
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (function_declaration
+        (modifiers
+          (context_parameters
+            (context_parameter
+              (parameter
+                (simple_identifier)
+                (user_type
+                  (type_identifier)))))
+          (member_modifier))
+        (simple_identifier)
+        (function_value_parameters)
+        (nullable_type
+          (user_type
+            (type_identifier))
+          (quest))
+        (function_body
+          (null_literal))))))
+
+================================================================================
+Multiple context parameters with trailing comma and underscore
+================================================================================
+
+context(_: Foo, b: Bar,) fun g() {}
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body)))
+
+================================================================================
+Context parameter on a property and on an extension function
+================================================================================
+
+context(users: UserRepository) val firstUser: User? get() = users.getById(1)
+
+context(scope: AnalysisScope) fun Type.equalTo(other: Type): Boolean = true
+
+---
+
+(source_file
+  (property_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier)
+      (nullable_type
+        (user_type
+          (type_identifier))
+        (quest)))
+    (getter
+      (function_body
+        (call_expression
+          (navigation_expression
+            (simple_identifier)
+            (navigation_suffix
+              (simple_identifier)))
+          (call_suffix
+            (value_arguments
+              (value_argument
+                (integer_literal))))))))
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (receiver_type
+      (user_type
+        (type_identifier)))
+    (simple_identifier)
+    (function_value_parameters
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))
+    (user_type
+      (type_identifier))
+    (function_body
+      (boolean_literal))))
+
+================================================================================
+Annotated context parameter
+================================================================================
+
+context(@A users: UserRepository) fun h() = 1
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (annotation
+            (user_type
+              (type_identifier)))
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (integer_literal))))
+
+================================================================================
+context remains a valid identifier
+================================================================================
+
+fun f() {
+    context(x)
+    val context = 1
+    context.foo()
+    context(x = 2)
+    foo(context(y))
+}
+
+---
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (call_expression
+          (simple_identifier)
+          (call_suffix
+            (value_arguments
+              (value_argument
+                (simple_identifier)))))
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (integer_literal))
+        (call_expression
+          (navigation_expression
+            (simple_identifier)
+            (navigation_suffix
+              (simple_identifier)))
+          (call_suffix
+            (value_arguments)))
+        (call_expression
+          (simple_identifier)
+          (call_suffix
+            (value_arguments
+              (value_argument
+                (simple_identifier)
+                (integer_literal)))))
+        (call_expression
+          (simple_identifier)
+          (call_suffix
+            (value_arguments
+              (value_argument
+                (call_expression
+                  (simple_identifier)
+                  (call_suffix
+                    (value_arguments
+                      (value_argument
+                        (simple_identifier)))))))))))))

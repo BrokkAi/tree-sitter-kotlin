@@ -130,6 +130,10 @@ module.exports = grammar({
     [$.setter, $.simple_identifier],
     [$.getter, $.simple_identifier],
 
+    // `context(...)` can start a context parameter list (KEEP-0367) or an
+    // ordinary call/navigation on an identifier named `context`.
+    [$.context_parameters, $.simple_identifier],
+
     // ambiguity between parameter modifiers in anonymous functions
     [$.parameter_modifiers, $._type_modifier],
 
@@ -1296,7 +1300,29 @@ module.exports = grammar({
       $.property_modifier,
       $.inheritance_modifier,
       $.parameter_modifier,
-      $.platform_modifier
+      $.platform_modifier,
+      $.context_parameters
+    ),
+
+    // Context parameters (KEEP-0367): `context(name: Type, ...)` on function
+    // and property declarations. Placed in the modifier set like the Kotlin
+    // grammar intends (`functionModifier | propertyModifier`), so the usual
+    // modifier ordering (`@A context(x: X) override fun f()`) just works.
+    // `context` stays a soft keyword: it remains an ordinary identifier
+    // everywhere else (BrokkAi/bifrost-dev#2760).
+    context_parameters: $ => seq(
+      "context",
+      "(",
+      sep1($.context_parameter, ","),
+      optional(","),
+      ")"
+    ),
+
+    // KEEP-0367: `name: Type`; `_` is a valid simple_identifier already, and
+    // parameters may carry annotations (`context(@A users: UserRepository)`).
+    context_parameter: $ => seq(
+      repeat($.annotation),
+      $.parameter
     ),
 
     type_modifiers: $ => repeat1($._type_modifier),
@@ -1455,6 +1481,8 @@ module.exports = grammar({
       "finally",
       // Batch 7: enum
       "enum",
+      // Batch 9: context parameters (KEEP-0367) — see the conflict rules
+      "context",
       // Batch 8: variance modifiers — skipped, causes new break on SoftKeywordsInTypeArguments.kt
       // "out", "in" — too ambiguous in type parameter contexts
     ),

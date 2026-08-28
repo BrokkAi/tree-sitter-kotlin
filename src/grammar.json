@@ -6432,6 +6432,80 @@
         {
           "type": "SYMBOL",
           "name": "platform_modifier"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "context_parameters"
+        }
+      ]
+    },
+    "context_parameters": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "context"
+        },
+        {
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "context_parameter"
+            },
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "STRING",
+                    "value": ","
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "context_parameter"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": ","
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": ")"
+        }
+      ]
+    },
+    "context_parameter": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "annotation"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "parameter"
         }
       ]
     },
@@ -6951,6 +7025,10 @@
         {
           "type": "STRING",
           "value": "enum"
+        },
+        {
+          "type": "STRING",
+          "value": "context"
         }
       ]
     },
@@ -7890,6 +7968,10 @@
     ],
     [
       "getter",
+      "simple_identifier"
+    ],
+    [
+      "context_parameters",
       "simple_identifier"
     ],
     [
