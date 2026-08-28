@@ -87,6 +87,7 @@ module.exports = grammar({
     [$.parameter_modifier, $.simple_identifier],
     [$.parameter_modifiers],
     [$.type_parameter_modifiers],
+    [$._class_parameter_without_platform_modifier, $._class_parameter_platform_modifiers],
 
     // "<x>.<y> = z assignment conflicts with <x>.<y>() function call"
     [$._postfix_unary_expression, $._expression],
@@ -305,18 +306,19 @@ module.exports = grammar({
     binding_pattern_kind: $ => choice("val", "var"),
 
     class_parameter: $ => seq(
-      optional(alias($._class_parameter_modifiers, $.modifiers)),
-      optional($.binding_pattern_kind),
-      $.simple_identifier,
-      ":",
-      $._type,
-      optional(seq("=", $._expression))
+      choice(
+        $._class_parameter_without_platform_modifier,
+        $._class_parameter_with_platform_modifier
+      )
     ),
 
     // Primary-constructor parameters take a narrower modifier set than the
     // general `modifiers` rule: annotations, visibility, inheritance and
     // member modifiers (real-world usage such as `final override val x`),
-    // and `vararg`/`noinline`/`crossinline` — but never class modifiers.
+    // and `vararg`/`noinline`/`crossinline` — but never class modifiers. A
+    // platform modifier is handled separately below because it is only valid
+    // on a constructor property (`actual val x`), and otherwise conflicts with
+    // soft-keyword parameter names such as `actual`.
     // The general rule let a parameter named `data`/`inner`/`value` be read
     // as a class_modifier after `vararg`, swallowing the parameter name and
     // collapsing the whole declaration (BrokkAi/bifrost-dev#2735). Aliased
@@ -328,6 +330,43 @@ module.exports = grammar({
       $.member_modifier,
       $.parameter_modifier
     )),
+
+    _class_parameter_without_platform_modifier: $ => seq(
+      optional(alias($._class_parameter_modifiers, $.modifiers)),
+      optional($.binding_pattern_kind),
+      $.simple_identifier,
+      ":",
+      $._type,
+      optional(seq("=", $._expression))
+    ),
+
+    _class_parameter_with_platform_modifier: $ => seq(
+      alias($._class_parameter_platform_modifiers, $.modifiers),
+      $.binding_pattern_kind,
+      $.simple_identifier,
+      ":",
+      $._type,
+      optional(seq("=", $._expression))
+    ),
+
+    _class_parameter_platform_modifiers: $ => seq(
+      repeat(choice(
+        $.annotation,
+        $.visibility_modifier,
+        $.inheritance_modifier,
+        $.member_modifier,
+        $.parameter_modifier
+      )),
+      $.platform_modifier,
+      repeat(choice(
+        $.annotation,
+        $.visibility_modifier,
+        $.inheritance_modifier,
+        $.member_modifier,
+        $.parameter_modifier,
+        $.platform_modifier
+      ))
+    ),
 
     _delegation_specifiers: $ => prec.left(sep1(
       $.delegation_specifier,

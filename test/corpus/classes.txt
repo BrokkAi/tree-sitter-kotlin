@@ -1303,3 +1303,63 @@ private open class TestRule(vararg data: Pair<String, Any>) : Rule(TestConfig(*d
           (value_argument
             (string_literal
               (string_content))))))))
+
+================================================================================
+Platform modifiers on constructor properties and soft-keyword names
+================================================================================
+
+actual class PlatformData(public actual val name: String, public actual val ordinal: Int)
+
+class SoftKeywordParameter(vararg actual: Int, vararg data: Int, vararg inner: Int, vararg value: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (modifiers
+      (platform_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (visibility_modifier)
+          (platform_modifier))
+        (binding_pattern_kind)
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (class_parameter
+        (modifiers
+          (visibility_modifier)
+          (platform_modifier))
+        (binding_pattern_kind)
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (class_parameter
+        (modifiers
+          (parameter_modifier))
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))

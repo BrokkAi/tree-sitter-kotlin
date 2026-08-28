@@ -721,6 +721,52 @@
           "type": "CHOICE",
           "members": [
             {
+              "type": "SYMBOL",
+              "name": "_class_parameter_without_platform_modifier"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "_class_parameter_with_platform_modifier"
+            }
+          ]
+        }
+      ]
+    },
+    "_class_parameter_modifiers": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "annotation"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "visibility_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "inheritance_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "member_modifier"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "parameter_modifier"
+          }
+        ]
+      }
+    },
+    "_class_parameter_without_platform_modifier": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
               "type": "ALIAS",
               "content": {
                 "type": "SYMBOL",
@@ -781,33 +827,125 @@
         }
       ]
     },
-    "_class_parameter_modifiers": {
-      "type": "REPEAT1",
-      "content": {
-        "type": "CHOICE",
-        "members": [
-          {
+    "_class_parameter_with_platform_modifier": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "ALIAS",
+          "content": {
             "type": "SYMBOL",
-            "name": "annotation"
+            "name": "_class_parameter_platform_modifiers"
           },
-          {
-            "type": "SYMBOL",
-            "name": "visibility_modifier"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "inheritance_modifier"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "member_modifier"
-          },
-          {
-            "type": "SYMBOL",
-            "name": "parameter_modifier"
+          "named": true,
+          "value": "modifiers"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "binding_pattern_kind"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "simple_identifier"
+        },
+        {
+          "type": "STRING",
+          "value": ":"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_type"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "STRING",
+                  "value": "="
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "_expression"
+                }
+              ]
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        }
+      ]
+    },
+    "_class_parameter_platform_modifiers": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "annotation"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "visibility_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "inheritance_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "member_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "parameter_modifier"
+              }
+            ]
           }
-        ]
-      }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "platform_modifier"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "annotation"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "visibility_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "inheritance_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "member_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "parameter_modifier"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "platform_modifier"
+              }
+            ]
+          }
+        }
+      ]
     },
     "_delegation_specifiers": {
       "type": "PREC_LEFT",
@@ -7415,6 +7553,10 @@
     ],
     [
       "type_parameter_modifiers"
+    ],
+    [
+      "_class_parameter_without_platform_modifier",
+      "_class_parameter_platform_modifiers"
     ],
     [
       "_postfix_unary_expression",
