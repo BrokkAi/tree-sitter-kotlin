@@ -835,6 +835,31 @@ fun foo() {
           (integer_literal))))))
 
 ================================================================================
+Block comment before call parentheses
+================================================================================
+
+fun foo() {
+    bar
+        /* comment */
+        (1, 2)
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (simple_identifier)
+        (multiline_comment)
+        (parenthesized_expression
+          (ERROR
+            (integer_literal))
+          (integer_literal))))))
+
+================================================================================
 Try-catch with second catch on new line
 ================================================================================
 
