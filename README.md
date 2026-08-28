@@ -1,7 +1,6 @@
 # Brokk's Kotlin Grammar for Tree-sitter
 
 [![Build](https://github.com/BrokkAi/tree-sitter-kotlin/actions/workflows/build.yml/badge.svg)](https://github.com/BrokkAi/tree-sitter-kotlin/actions/workflows/build.yml)
-[![NPM](https://img.shields.io/npm/v/tree-sitter-kotlin)](https://www.npmjs.com/package/tree-sitter-kotlin)
 [![crates.io](https://img.shields.io/crates/v/brokk-tree-sitter-kotlin)](https://crates.io/crates/brokk-tree-sitter-kotlin)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
