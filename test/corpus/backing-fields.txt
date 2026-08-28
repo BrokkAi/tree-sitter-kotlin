@@ -532,3 +532,207 @@ fun expressions() {
           (simple_identifier)
           (parenthesized_expression
             (simple_identifier)))))))
+
+================================================================================
+Typed backing field without initializer preserves following declaration
+================================================================================
+
+class TypedOnly {
+    val value: CharSequence
+        field: StringBuilder
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with private modifier
+================================================================================
+
+class PrivateField {
+    val value: Int
+        private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with lateinit modifier
+================================================================================
+
+class LateinitField {
+    val value: Int
+        lateinit field: Int
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (member_modifier))
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with internal and lateinit modifiers
+================================================================================
+
+class InternalLateinitField {
+    val value: Int
+        internal lateinit field: Int
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (visibility_modifier)
+            (member_modifier))
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Line comment before backing-field modifiers
+================================================================================
+
+class LineCommentedField {
+    val value: Int
+    // backing field visibility
+    private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (line_comment)
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Block comment before backing-field modifiers
+================================================================================
+
+class BlockCommentedField {
+    val value: Int
+    /* backing field visibility */
+    private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (multiline_comment)
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))

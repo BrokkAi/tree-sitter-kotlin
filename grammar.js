@@ -592,18 +592,22 @@ module.exports = grammar({
 
     property_delegate: $ => seq(optional($._by_delegation_hint), "by", $._expression),
 
-    // Explicit backing field: `field = expr` or `field: Type = expr`.
+    // Explicit backing field: `field = expr`, `field: Type`, or
+    // `field: Type = expr`. Modifiers are parsed by the compiler before the
+    // `field` component (KEEP-0430), e.g. `private field = 4`.
     // `field` stays a soft keyword (it remains a simple_identifier); the
     // optional hint token mirrors property_delegate: it is never emitted,
     // but its presence in valid_symbols tells the external scanner not to
     // insert an automatic semicolon before a `field =` / `field: T =` line.
-    backing_field: $ => seq(
+    backing_field: $ => prec.right(seq(
       optional($._backing_field_hint),
+      optional($.modifiers),
       "field",
-      optional(seq(":", $._type)),
-      "=",
-      $._expression
-    ),
+      choice(
+        seq(":", $._type, optional(seq("=", $._expression))),
+        seq("=", $._expression)
+      )
+    )),
 
     destructuring_declaration: $ => prec.right(seq(
       optional($.modifiers),

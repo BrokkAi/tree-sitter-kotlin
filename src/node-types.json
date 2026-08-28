@@ -757,6 +757,10 @@
           "named": true
         },
         {
+          "type": "modifiers",
+          "named": true
+        },
+        {
           "type": "multiplicative_expression",
           "named": true
         },
