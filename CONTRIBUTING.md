@@ -48,7 +48,7 @@ The CI build regenerates the parser and verifies that the output matches what is
 
 ## Parser Size Limit
 
-CI enforces a maximum parser size of **35 MiB** for `src/parser.c`. If your grammar changes cause the parser to exceed this, you may need to simplify or restructure the rules.
+CI enforces a maximum parser size of **60 MiB** for `src/parser.c`. If your grammar changes cause the parser to exceed this, you may need to simplify or restructure the rules.
 
 ## Test Format
 

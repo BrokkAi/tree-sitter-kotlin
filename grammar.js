@@ -179,6 +179,8 @@ module.exports = grammar({
     $._interpolation_expression_start,
     $._interpolation_identifier_start,
     $._by_delegation_hint,
+    $._backing_field_hint,
+    $._accessor_start,
   ],
 
   extras: $ => [
@@ -565,18 +567,47 @@ module.exports = grammar({
       optional(seq(field("receiver", $.receiver_type), optional('.'))),
       choice($.variable_declaration, $.multi_variable_declaration),
       optional($.type_constraints),
+      // Kotlin 2.2 explicit backing field (KEEP-0430) as an alternative to
+      // an initializer/delegate: the compiler forbids combining them, and
+      // scoping the backing field to the initializer-free form keeps the
+      // hint token's blast radius (and the parse tables) small.
       optional(choice(
         seq("=", $._expression),
-        $.property_delegate
+        $.property_delegate,
+        $.backing_field
       )),
       optional(';'),
-      optional(choice(
-        seq($.getter, optional($.setter)),
-        seq($.setter, optional($.getter)),
-      ))
+      optional($._property_accessors)
+    )),
+
+    // Keeping the accessor permutations behind one rule prevents the property
+    // prefix from being duplicated across both alternatives in the LR tables.
+    _property_accessors: $ => prec.right(seq(
+      optional($._accessor_start),
+      choice(
+        seq($.getter, optional(seq(optional($._accessor_start), $.setter))),
+        seq($.setter, optional(seq(optional($._accessor_start), $.getter))),
+      )
     )),
 
     property_delegate: $ => seq(optional($._by_delegation_hint), "by", $._expression),
+
+    // Explicit backing field: `field = expr`, `field: Type`, or
+    // `field: Type = expr`. Modifiers are parsed by the compiler before the
+    // `field` component (KEEP-0430), e.g. `private field = 4`.
+    // `field` stays a soft keyword (it remains a simple_identifier); the
+    // optional hint token mirrors property_delegate: it is never emitted,
+    // but its presence in valid_symbols tells the external scanner not to
+    // insert an automatic semicolon before a `field =` / `field: T =` line.
+    backing_field: $ => prec.right(seq(
+      optional($._backing_field_hint),
+      optional($.modifiers),
+      "field",
+      choice(
+        seq(":", $._type, optional(seq("=", $._expression))),
+        seq("=", $._expression)
+      )
+    )),
 
     destructuring_declaration: $ => prec.right(seq(
       optional($.modifiers),

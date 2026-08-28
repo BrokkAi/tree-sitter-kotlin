@@ -1,0 +1,738 @@
+================================================================================
+Explicit backing field with implicit type
+================================================================================
+
+class MainViewModel {
+    val termsStepFlow: StateFlow<Int>
+        field = MutableStateFlow(0)
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))
+        (backing_field
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (integer_literal))))))))))
+
+================================================================================
+Explicit backing field with explicit type
+================================================================================
+
+class MainViewModel {
+    val termsAcceptedFlow: StateFlow<Boolean>
+        field: MutableStateFlow<Boolean> = if (termsVersion > 0) {
+            MutableStateFlow(true)
+        } else {
+            MutableStateFlow(false)
+        }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))
+        (backing_field
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier)))))
+          (if_expression
+            (comparison_expression
+              (simple_identifier)
+              (integer_literal))
+            (control_structure_body
+              (statements
+                (call_expression
+                  (simple_identifier)
+                  (call_suffix
+                    (value_arguments
+                      (value_argument
+                        (boolean_literal)))))))
+            (control_structure_body
+              (statements
+                (call_expression
+                  (simple_identifier)
+                  (call_suffix
+                    (value_arguments
+                      (value_argument
+                        (boolean_literal)))))))))))))
+
+================================================================================
+Backing field with custom getter and setter
+================================================================================
+
+class Counter {
+    var count: Int field = 1; get() = field; set(value) { field = value }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal)))
+      (getter
+        (function_body
+          (simple_identifier)))
+      (setter
+        (parameter_with_optional_type
+          (simple_identifier))
+        (function_body
+          (statements
+            (assignment
+              (directly_assignable_expression
+                (simple_identifier))
+              (simple_identifier))))))))
+
+================================================================================
+Backing field with getter and setter on following lines
+================================================================================
+
+// Like getters after an initializer or type ("get after newline" in
+// newlines.txt), accessors on their own line parse as sibling declarations.
+
+class Counter {
+    var count: Int
+        field = 1
+        get() = field
+        set(value) { field = value }
+}
+
+---
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal)))
+      (getter
+        (function_body
+          (simple_identifier)))
+      (setter
+        (parameter_with_optional_type
+          (simple_identifier))
+        (function_body
+          (statements
+            (assignment
+              (directly_assignable_expression
+                (simple_identifier))
+              (simple_identifier))))))))
+
+================================================================================
+Multiple backing fields in one class (gkd MainViewModel shape)
+================================================================================
+
+class MainViewModel {
+    val termsStepFlow: StateFlow<Int>
+        field = MutableStateFlow(0)
+
+    val termsAcceptedFlow: StateFlow<Boolean>
+        field: MutableStateFlow<Boolean> = if (termsVersion > 0) {
+            MutableStateFlow(true)
+        } else {
+            MutableStateFlow(false)
+        }
+
+    val tabFlow: StateFlow<Int>
+        field = MutableStateFlow(BottomNavItem.Dashboard.key)
+
+    val pageScrollResetRequestFlow: StateFlow<PageScrollResetRequest?>
+        field = MutableStateFlow(null)
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))
+        (backing_field
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (integer_literal)))))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))
+        (backing_field
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier)))))
+          (if_expression
+            (comparison_expression
+              (simple_identifier)
+              (integer_literal))
+            (control_structure_body
+              (statements
+                (call_expression
+                  (simple_identifier)
+                  (call_suffix
+                    (value_arguments
+                      (value_argument
+                        (boolean_literal)))))))
+            (control_structure_body
+              (statements
+                (call_expression
+                  (simple_identifier)
+                  (call_suffix
+                    (value_arguments
+                      (value_argument
+                        (boolean_literal))))))))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))
+        (backing_field
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (navigation_expression
+                    (navigation_expression
+                      (simple_identifier)
+                      (navigation_suffix
+                        (simple_identifier)))
+                    (navigation_suffix
+                      (simple_identifier)))))))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (nullable_type
+                  (user_type
+                    (type_identifier))
+                  (quest))))))
+        (backing_field
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (null_literal))))))))))
+
+================================================================================
+field remains a valid property name
+================================================================================
+
+val field = 5
+
+---
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (integer_literal)))
+
+================================================================================
+field remains a valid named argument
+================================================================================
+
+fun f() {
+    foo(field = 1)
+}
+
+---
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (call_expression
+          (simple_identifier)
+          (call_suffix
+            (value_arguments
+              (value_argument
+                (simple_identifier)
+                (integer_literal)))))))))
+
+================================================================================
+field assignment after a local property
+================================================================================
+
+// A local property with an initializer cannot grow an explicit backing
+// field (KEEP-0430), so the ASI hint is not active here: `field = 2`
+// parses as an ordinary assignment statement to an identifier `field`.
+
+fun f() {
+    val x = 1
+    field = 2
+}
+
+---
+
+(source_file
+  (line_comment)
+  (line_comment)
+  (line_comment)
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (integer_literal))
+        (assignment
+          (directly_assignable_expression
+            (simple_identifier))
+          (integer_literal))))))
+
+================================================================================
+field annotation use-site target unchanged
+================================================================================
+
+class Ann {
+    @field:SomeAnn
+    val x = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (modifiers
+          (annotation
+            (use_site_target)
+            (user_type
+              (type_identifier))))
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Same-line backing-field accessors without semicolons
+================================================================================
+
+class Counter {
+    var count: Int field = 1 get() = field set(value) { field = value }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal))
+        (getter
+          (function_body
+            (simple_identifier)))
+        (setter
+          (parameter_with_optional_type
+            (simple_identifier))
+          (function_body
+            (statements
+              (assignment
+                (directly_assignable_expression
+                  (simple_identifier))
+                (simple_identifier)))))))))
+
+================================================================================
+Same-line backing-field setter without semicolon
+================================================================================
+
+class Counter {
+    var count: Int field = 1 set(value) { field = value }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (integer_literal))
+        (setter
+          (parameter_with_optional_type
+            (simple_identifier))
+          (function_body
+            (statements
+              (assignment
+                (directly_assignable_expression
+                  (simple_identifier))
+                (simple_identifier)))))))))
+
+================================================================================
+Same-line delegated-property getter without semicolon
+================================================================================
+
+class Counter {
+    val delegated by lazy { 1 } get() = delegated
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (property_delegate
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (annotated_lambda
+                (lambda_literal
+                  (statements
+                    (integer_literal)))))))
+        (getter
+          (function_body
+            (simple_identifier)))))))
+
+================================================================================
+Accessor soft keywords remain infix operators
+================================================================================
+
+fun expressions() {
+    val a = one get two
+    val b = one set two
+    one get (two)
+    one set (two)
+}
+
+---
+
+(source_file
+  (function_declaration
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body
+      (statements
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (infix_expression
+            (simple_identifier)
+            (simple_identifier)
+            (simple_identifier)))
+        (property_declaration
+          (binding_pattern_kind)
+          (variable_declaration
+            (simple_identifier))
+          (infix_expression
+            (simple_identifier)
+            (simple_identifier)
+            (simple_identifier)))
+        (infix_expression
+          (simple_identifier)
+          (simple_identifier)
+          (parenthesized_expression
+            (simple_identifier)))
+        (infix_expression
+          (simple_identifier)
+          (simple_identifier)
+          (parenthesized_expression
+            (simple_identifier)))))))
+
+================================================================================
+Typed backing field without initializer preserves following declaration
+================================================================================
+
+class TypedOnly {
+    val value: CharSequence
+        field: StringBuilder
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with private modifier
+================================================================================
+
+class PrivateField {
+    val value: Int
+        private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with lateinit modifier
+================================================================================
+
+class LateinitField {
+    val value: Int
+        lateinit field: Int
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (member_modifier))
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Backing field with internal and lateinit modifiers
+================================================================================
+
+class InternalLateinitField {
+    val value: Int
+        internal lateinit field: Int
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (backing_field
+          (modifiers
+            (visibility_modifier)
+            (member_modifier))
+          (user_type
+            (type_identifier))))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Line comment before backing-field modifiers
+================================================================================
+
+class LineCommentedField {
+    val value: Int
+    // backing field visibility
+    private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (line_comment)
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
+
+================================================================================
+Block comment before backing-field modifiers
+================================================================================
+
+class BlockCommentedField {
+    val value: Int
+    /* backing field visibility */
+    private field = 4
+
+    val after = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier)
+          (user_type
+            (type_identifier)))
+        (multiline_comment)
+        (backing_field
+          (modifiers
+            (visibility_modifier))
+          (integer_literal)))
+      (property_declaration
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))

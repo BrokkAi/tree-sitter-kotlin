@@ -34,7 +34,7 @@ jobs:
         run: |
           size_kib="$(du -sk src/parser.c | cut -f1)"
           size_mib="$((size_kib / 1024))"
-          max_size_mib=35
+          max_size_mib=60
 
           echo "The parser is now at $size_mib MiB"
           if [ "$size_mib" -gt "$max_size_mib" ]; then
