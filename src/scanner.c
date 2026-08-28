@@ -407,7 +407,7 @@ static bool followed_by_arrow(TSLexer *lexer) {
 }
 
 // Check if the current position has a visibility modifier (public, private,
-// protected, internal) followed by horizontal whitespace and "constructor".
+// protected, internal) followed by whitespace/comments and "constructor".
 // Uses skip() — safe to call speculatively since no token boundary is changed.
 static bool check_modifier_then_constructor(TSLexer *lexer) {
   // Buffer the first word to identify the modifier
@@ -424,8 +424,10 @@ static bool check_modifier_then_constructor(TSLexer *lexer) {
     return false;
   }
 
-  // Skip horizontal whitespace (not newlines)
-  while (lexer->lookahead == ' ' || lexer->lookahead == '\t') skip(lexer);
+  // A constructor may follow the modifier on another line, with comments
+  // between them. This is also used after constructor annotations, where
+  // comments and newlines are valid between the modifier and constructor.
+  if (!skip_whitespace_and_comments(lexer)) return false;
 
   return check_word(lexer, "constructor", 11);
 }
@@ -466,8 +468,11 @@ static bool check_annotation_then_constructor(TSLexer *lexer) {
         }
       }
     }
-    // Skip whitespace and newlines between annotations or before constructor
-    while (iswspace(lexer->lookahead)) skip(lexer);
+    // Skip whitespace, newlines, and comments between annotations or before
+    // constructor. A trailing comment must not defeat the lookahead
+    // (BrokkAi/bifrost-dev#2695). A bare '/' cannot precede 'constructor',
+    // so give up if the helper stops at one.
+    if (!skip_whitespace_and_comments(lexer)) return false;
   }
   // Allow an optional visibility modifier before 'constructor'
   if (is_word_char(lexer->lookahead) && lexer->lookahead != 'c') {
