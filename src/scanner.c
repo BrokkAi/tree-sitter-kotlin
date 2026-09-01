@@ -19,6 +19,7 @@ enum TokenType {
   BY_DELEGATION_HINT,
   BACKING_FIELD_HINT,
   ACCESSOR_START,
+  ANNOTATION_ARGS_PAREN,
 };
 
 /* Pretty much all of this code is taken from the Julia tree-sitter
@@ -1231,6 +1232,153 @@ static bool scan_accessor_start(TSLexer *lexer) {
   return true;
 }
 
+// Skip a string literal during lookahead scans: "..." with escapes or raw
+// """...""" (no escapes). The lexer is at the opening quote. Returns false
+// on EOF before the closing quote.
+static bool skip_string_literal(TSLexer *lexer) {
+  advance(lexer); // opening '"'
+  bool raw = false;
+  if (lexer->lookahead == '"') {
+    advance(lexer);
+    if (lexer->lookahead == '"') {
+      raw = true;
+      advance(lexer);
+    } else {
+      return true; // empty string ""
+    }
+  }
+  unsigned quotes = 0;
+  for (;;) {
+    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+    if (!raw && lexer->lookahead == '\\') {
+      advance(lexer);
+      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+      advance(lexer);
+      continue;
+    }
+    if (lexer->lookahead == '"') {
+      advance(lexer);
+      if (!raw) return true;
+      if (++quotes >= 3) return true;
+      continue;
+    }
+    quotes = 0;
+    advance(lexer);
+  }
+}
+
+// Skip a character literal during lookahead scans ('x', '\n'). The lexer is
+// at the opening quote. Returns false on EOF or a newline before the close
+// (then it is not a character literal).
+static bool skip_char_literal(TSLexer *lexer) {
+  advance(lexer); // opening '\''
+  for (;;) {
+    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+    if (lexer->lookahead == '\\') {
+      advance(lexer);
+      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+      advance(lexer);
+      continue;
+    }
+    if (lexer->lookahead == '\'') {
+      advance(lexer);
+      return true;
+    }
+    if (lexer->lookahead == '\n') return false;
+    advance(lexer);
+  }
+}
+
+// After '(', scan its balanced group (tracking nested parens, braces,
+// strings, character literals, and comments) and decide whether it belongs
+// to a function type: either a '->' at brace depth 0 appears inside the
+// group, or the group's close is followed by '->'. Annotation arguments are
+// expressions, which never contain a bare '->' outside braces, so this
+// separates `@Composable () -> Unit` and `@Composable (A.(B) -> Unit)` from
+// `@Ann(args)` on a plain type (BrokkAi/bifrost-dev#2758). The token itself
+// covers only the '(' (mark_end is called right after it); everything else
+// is lookahead that tree-sitter rewinds.
+static bool check_function_type_paren(TSLexer *lexer) {
+  advance(lexer); // consume '('
+  lexer->mark_end(lexer);
+  unsigned paren_depth = 1;
+  unsigned brace_depth = 0;
+  for (;;) {
+    int32_t c = lexer->lookahead;
+    if (c == '\0' && lexer->eof(lexer)) return false;
+    switch (c) {
+      case '"':
+        if (!skip_string_literal(lexer)) return false;
+        continue;
+      case '\'':
+        if (!skip_char_literal(lexer)) return false;
+        continue;
+      case '/':
+        advance(lexer);
+        if (lexer->lookahead == '/') {
+          while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
+                 !(lexer->lookahead == '\0' && lexer->eof(lexer))) {
+            advance(lexer);
+          }
+        } else if (lexer->lookahead == '*') {
+          advance(lexer);
+          unsigned depth = 1;
+          bool terminated = false;
+          while (!terminated) {
+            if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+            if (lexer->lookahead == '*') {
+              advance(lexer);
+              if (lexer->lookahead == '/') {
+                advance(lexer);
+                terminated = --depth == 0;
+              }
+            } else if (lexer->lookahead == '/') {
+              advance(lexer);
+              if (lexer->lookahead == '*') {
+                advance(lexer);
+                depth++;
+              }
+            } else {
+              advance(lexer);
+            }
+          }
+        }
+        // a bare '/' is just division; nothing special to skip
+        continue;
+      case '{':
+        brace_depth++;
+        advance(lexer);
+        continue;
+      case '}':
+        if (brace_depth > 0) brace_depth--;
+        advance(lexer);
+        continue;
+      case '(':
+        paren_depth++;
+        advance(lexer);
+        continue;
+      case ')':
+        advance(lexer);
+        if (--paren_depth == 0) {
+          // Group closed: the function-type arrow must come next
+          // (whitespace and comments may intervene).
+          if (!skip_whitespace_and_comments(lexer)) return false;
+          if (lexer->lookahead != '-') return false;
+          advance(lexer);
+          return lexer->lookahead == '>';
+        }
+        continue;
+      case '-':
+        advance(lexer);
+        if (brace_depth == 0 && lexer->lookahead == '>') return true;
+        continue;
+      default:
+        advance(lexer);
+        continue;
+    }
+  }
+}
+
 bool tree_sitter_kotlin_external_scanner_scan(void *payload, TSLexer *lexer, const bool *valid_symbols) {
   // BY_DELEGATION_HINT is declared in the grammar (optional, before `by` in
   // explicit_delegation and property_delegate) purely so it appears in
@@ -1282,6 +1430,21 @@ bool tree_sitter_kotlin_external_scanner_scan(void *payload, TSLexer *lexer, con
   // a string might follow after some whitespace, so we can't lookahead
   // until we get rid of it
   while (iswspace(lexer->lookahead)) skip(lexer);
+
+  // A '(' after an annotation name usually opens the annotation's value
+  // arguments, but in a type position it can instead open a function type's
+  // parameter list or a parenthesized function type: `@Composable () -> Unit`
+  // (BrokkAi/bifrost-dev#2758). Emit the distinct annotation-args paren only
+  // when the group is NOT a function type; otherwise return false so the
+  // internal lexer produces a plain '(' and the annotation-args path dies.
+  // The valid_symbols gate confines this to post-annotation states, so
+  // ordinary calls and parentheses are unaffected.
+  if (lexer->lookahead == '(' && valid_symbols[ANNOTATION_ARGS_PAREN] &&
+      !valid_symbols[STRING_CONTENT] &&
+      !check_function_type_paren(lexer)) {
+    lexer->result_symbol = ANNOTATION_ARGS_PAREN;
+    return true;
+  }
 
   if (valid_symbols[STRING_START] && scan_string_start(lexer, payload)) {
     lexer->result_symbol = STRING_START;
