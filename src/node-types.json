@@ -2221,6 +2221,40 @@
     }
   },
   {
+    "type": "context_parameter",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "annotation",
+          "named": true
+        },
+        {
+          "type": "parameter",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "context_parameters",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "context_parameter",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "control_structure_body",
     "named": true,
     "fields": {},
@@ -5924,6 +5958,10 @@
         },
         {
           "type": "class_modifier",
+          "named": true
+        },
+        {
+          "type": "context_parameters",
           "named": true
         },
         {
@@ -10168,6 +10206,10 @@
   },
   {
     "type": "constructor",
+    "named": false
+  },
+  {
+    "type": "context",
     "named": false
   },
   {
