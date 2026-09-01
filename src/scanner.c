@@ -20,6 +20,7 @@ enum TokenType {
   BACKING_FIELD_HINT,
   ACCESSOR_START,
   ANNOTATION_ARGS_PAREN,
+  CONSTRUCTOR_PAREN_HINT,
 };
 
 /* Pretty much all of this code is taken from the Julia tree-sitter
@@ -499,6 +500,160 @@ static bool check_backing_field_shape(TSLexer *lexer) {
   return false;
 }
 
+// Skip a string literal during lookahead scans: "..." with escapes or raw
+// """...""" (no escapes). The lexer is at the opening quote. Returns false
+// on EOF before the closing quote.
+static bool skip_string_literal(TSLexer *lexer) {
+  advance(lexer); // opening '"'
+  bool raw = false;
+  if (lexer->lookahead == '"') {
+    advance(lexer);
+    if (lexer->lookahead == '"') {
+      raw = true;
+      advance(lexer);
+    } else {
+      return true; // empty string ""
+    }
+  }
+  unsigned quotes = 0;
+  for (;;) {
+    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+    if (!raw && lexer->lookahead == '\\') {
+      advance(lexer);
+      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+      advance(lexer);
+      continue;
+    }
+    if (lexer->lookahead == '"') {
+      advance(lexer);
+      if (!raw) return true;
+      if (++quotes >= 3) return true;
+      continue;
+    }
+    quotes = 0;
+    advance(lexer);
+  }
+}
+
+// Skip a character literal during lookahead scans ('x', '\n'). The lexer is
+// at the opening quote. Returns false on EOF or a newline before the close
+// (then it is not a character literal).
+static bool skip_char_literal(TSLexer *lexer) {
+  advance(lexer); // opening '\''
+  for (;;) {
+    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+    if (lexer->lookahead == '\\') {
+      advance(lexer);
+      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+      advance(lexer);
+      continue;
+    }
+    if (lexer->lookahead == '\'') {
+      advance(lexer);
+      return true;
+    }
+    if (lexer->lookahead == '\n') return false;
+    advance(lexer);
+  }
+}
+
+// After '(', scan its balanced group for either an empty constructor or a
+// constructor-parameter colon: a ':' at the outer paren depth and brace depth
+// 0 that is neither '::' (callable reference) nor '?:' (elvis), skipping
+// strings, character literals, and comments. A class
+// header's primary constructor may start on the next line
+// (`class Door\n(val width: Int = 3)`, BrokkAi/bifrost-dev#2762), so the
+// ASI scanner consults this before inserting a semicolon at a
+// statement-initial '('. Pure lookahead: nothing is consumed permanently
+// and mark_end is never touched, so callers keep control of token bounds.
+static bool check_constructor_param_colon(TSLexer *lexer) {
+  advance(lexer); // consume '('
+  unsigned paren_depth = 1;
+  unsigned brace_depth = 0;
+  bool outer_has_content = false;
+  for (;;) {
+    int32_t c = lexer->lookahead;
+    if (c == '\0' && lexer->eof(lexer)) return false;
+    switch (c) {
+      case '"':
+        if (paren_depth == 1) outer_has_content = true;
+        if (!skip_string_literal(lexer)) return false;
+        continue;
+      case '\'':
+        if (paren_depth == 1) outer_has_content = true;
+        if (!skip_char_literal(lexer)) return false;
+        continue;
+      case '/':
+        advance(lexer);
+        if (lexer->lookahead == '/') {
+          while (lexer->lookahead != '\n' && lexer->lookahead != '\r' &&
+                 !(lexer->lookahead == '\0' && lexer->eof(lexer))) {
+            advance(lexer);
+          }
+        } else if (lexer->lookahead == '*') {
+          advance(lexer);
+          unsigned depth = 1;
+          bool terminated = false;
+          while (!terminated) {
+            if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
+            if (lexer->lookahead == '*') {
+              advance(lexer);
+              if (lexer->lookahead == '/') {
+                advance(lexer);
+                terminated = --depth == 0;
+              }
+            } else if (lexer->lookahead == '/') {
+              advance(lexer);
+              if (lexer->lookahead == '*') {
+                advance(lexer);
+                depth++;
+              }
+            } else {
+              advance(lexer);
+            }
+          }
+        } else if (paren_depth == 1) {
+          outer_has_content = true;
+        }
+        // a bare '/' is just division; nothing special to skip
+        continue;
+      case '{':
+        if (paren_depth == 1) outer_has_content = true;
+        brace_depth++;
+        advance(lexer);
+        continue;
+      case '}':
+        if (brace_depth > 0) brace_depth--;
+        advance(lexer);
+        continue;
+      case '(':
+        if (paren_depth == 1) outer_has_content = true;
+        paren_depth++;
+        advance(lexer);
+        continue;
+      case ')':
+        advance(lexer);
+        if (--paren_depth == 0) return !outer_has_content;
+        continue;
+      case '?':
+        if (paren_depth == 1) outer_has_content = true;
+        advance(lexer);
+        if (lexer->lookahead == ':') advance(lexer); // elvis: not a param colon
+        continue;
+      case ':':
+        if (paren_depth == 1) outer_has_content = true;
+        advance(lexer);
+        if (lexer->lookahead == ':') continue; // callable reference
+        if (paren_depth == 1 && brace_depth == 0) return true;
+        continue;
+      default:
+        if (paren_depth == 1 && !iswspace(c)) outer_has_content = true;
+        advance(lexer);
+        continue;
+    }
+  }
+}
+
 static bool is_backing_field_modifier(const char *word) {
   return strcmp(word, "annotation") == 0 ||
          strcmp(word, "sealed") == 0 ||
@@ -750,11 +905,18 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
         return false;
 
       // Insert a semicolon before '(': Kotlin requires a call's argument
-      // list on the callee's line, so a newline before '(' always ends the
-      // statement (BrokkAi/bifrost-dev#2710). Without this, a
-      // statement-initial parenthesized expression was misread as call
-      // continuation of the previous line.
+      // list on the callee's line, so a newline before '(' normally ends
+      // the statement (BrokkAi/bifrost-dev#2710). Exception: after a class
+      // header, a paren group with constructor-parameter shape (a typed
+      // parameter's ':') continues the primary constructor on the next
+      // line — `class Door\n(val width: Int = 3)` — so no semicolon there
+      // (BrokkAi/bifrost-dev#2762).
       case '(':
+        if (valid_symbols[CONSTRUCTOR_PAREN_HINT] &&
+            !valid_symbols[STRING_CONTENT] &&
+            check_constructor_param_colon(lexer)) {
+          return false;
+        }
         return true;
 
       // Handle `/` — could be division, line comment, or block comment.
@@ -809,7 +971,14 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
               return false;
             case '(':
               // Statement-initial paren: insert ASI (call parens must be on
-              // the callee's line). See the main switch below.
+              // the callee's line), except after a class header where a
+              // constructor-shaped group continues the primary constructor.
+              // See the main switch below.
+              if (valid_symbols[CONSTRUCTOR_PAREN_HINT] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_constructor_param_colon(lexer)) {
+                return false;
+              }
               return true;
             case '!':
               skip(lexer);
@@ -954,10 +1123,23 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
               lexer->result_symbol = MULTILINE_COMMENT;
               return true;
             case '(':
-              // Statement-initial paren: not a continuation. Produce ASI at
+              // Statement-initial paren: not a continuation — produce ASI at
               // the original position (call parens must be on the callee's
               // line); the block comment is re-scanned as MULTILINE_COMMENT
-              // on the next parse step, like the default case.
+              // on the next parse step, like the default case. Exception:
+              // after a class header, a constructor-shaped group continues
+              // the primary constructor — emit the comment now (its span is
+              // already consumed) and let the main switch decide ASI at the
+              // '(' on the next scan. mark_end only moves in the hint-gated
+              // branch, so the re-scan behavior elsewhere is unchanged.
+              if (valid_symbols[CONSTRUCTOR_PAREN_HINT] &&
+                  !valid_symbols[STRING_CONTENT]) {
+                lexer->mark_end(lexer);
+                if (check_constructor_param_colon(lexer)) {
+                  lexer->result_symbol = MULTILINE_COMMENT;
+                  return true;
+                }
+              }
               return true;
             case '!':
               // mark_end before consuming '!' so it's not swallowed.
@@ -1230,63 +1412,6 @@ static bool scan_accessor_start(TSLexer *lexer) {
 
   lexer->result_symbol = ACCESSOR_START;
   return true;
-}
-
-// Skip a string literal during lookahead scans: "..." with escapes or raw
-// """...""" (no escapes). The lexer is at the opening quote. Returns false
-// on EOF before the closing quote.
-static bool skip_string_literal(TSLexer *lexer) {
-  advance(lexer); // opening '"'
-  bool raw = false;
-  if (lexer->lookahead == '"') {
-    advance(lexer);
-    if (lexer->lookahead == '"') {
-      raw = true;
-      advance(lexer);
-    } else {
-      return true; // empty string ""
-    }
-  }
-  unsigned quotes = 0;
-  for (;;) {
-    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
-    if (!raw && lexer->lookahead == '\\') {
-      advance(lexer);
-      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
-      advance(lexer);
-      continue;
-    }
-    if (lexer->lookahead == '"') {
-      advance(lexer);
-      if (!raw) return true;
-      if (++quotes >= 3) return true;
-      continue;
-    }
-    quotes = 0;
-    advance(lexer);
-  }
-}
-
-// Skip a character literal during lookahead scans ('x', '\n'). The lexer is
-// at the opening quote. Returns false on EOF or a newline before the close
-// (then it is not a character literal).
-static bool skip_char_literal(TSLexer *lexer) {
-  advance(lexer); // opening '\''
-  for (;;) {
-    if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
-    if (lexer->lookahead == '\\') {
-      advance(lexer);
-      if (lexer->lookahead == '\0' && lexer->eof(lexer)) return false;
-      advance(lexer);
-      continue;
-    }
-    if (lexer->lookahead == '\'') {
-      advance(lexer);
-      return true;
-    }
-    if (lexer->lookahead == '\n') return false;
-    advance(lexer);
-  }
 }
 
 // After '(', scan its balanced group (tracking nested parens, braces,
