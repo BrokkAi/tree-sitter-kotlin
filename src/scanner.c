@@ -557,9 +557,10 @@ static bool skip_char_literal(TSLexer *lexer) {
   }
 }
 
-// After '(', scan its balanced group for a constructor-parameter colon: a
-// ':' at brace depth 0 that is neither '::' (callable reference) nor '?:'
-// (elvis), skipping strings, character literals, and comments. A class
+// After '(', scan its balanced group for either an empty constructor or a
+// constructor-parameter colon: a ':' at the outer paren depth and brace depth
+// 0 that is neither '::' (callable reference) nor '?:' (elvis), skipping
+// strings, character literals, and comments. A class
 // header's primary constructor may start on the next line
 // (`class Door\n(val width: Int = 3)`, BrokkAi/bifrost-dev#2762), so the
 // ASI scanner consults this before inserting a semicolon at a
@@ -569,14 +570,17 @@ static bool check_constructor_param_colon(TSLexer *lexer) {
   advance(lexer); // consume '('
   unsigned paren_depth = 1;
   unsigned brace_depth = 0;
+  bool outer_has_content = false;
   for (;;) {
     int32_t c = lexer->lookahead;
     if (c == '\0' && lexer->eof(lexer)) return false;
     switch (c) {
       case '"':
+        if (paren_depth == 1) outer_has_content = true;
         if (!skip_string_literal(lexer)) return false;
         continue;
       case '\'':
+        if (paren_depth == 1) outer_has_content = true;
         if (!skip_char_literal(lexer)) return false;
         continue;
       case '/':
@@ -608,10 +612,13 @@ static bool check_constructor_param_colon(TSLexer *lexer) {
               advance(lexer);
             }
           }
+        } else if (paren_depth == 1) {
+          outer_has_content = true;
         }
         // a bare '/' is just division; nothing special to skip
         continue;
       case '{':
+        if (paren_depth == 1) outer_has_content = true;
         brace_depth++;
         advance(lexer);
         continue;
@@ -620,23 +627,27 @@ static bool check_constructor_param_colon(TSLexer *lexer) {
         advance(lexer);
         continue;
       case '(':
+        if (paren_depth == 1) outer_has_content = true;
         paren_depth++;
         advance(lexer);
         continue;
       case ')':
         advance(lexer);
-        if (--paren_depth == 0) return false;
+        if (--paren_depth == 0) return !outer_has_content;
         continue;
       case '?':
+        if (paren_depth == 1) outer_has_content = true;
         advance(lexer);
         if (lexer->lookahead == ':') advance(lexer); // elvis: not a param colon
         continue;
       case ':':
+        if (paren_depth == 1) outer_has_content = true;
         advance(lexer);
         if (lexer->lookahead == ':') continue; // callable reference
-        if (brace_depth == 0) return true;
+        if (paren_depth == 1 && brace_depth == 0) return true;
         continue;
       default:
+        if (paren_depth == 1 && !iswspace(c)) outer_has_content = true;
         advance(lexer);
         continue;
     }

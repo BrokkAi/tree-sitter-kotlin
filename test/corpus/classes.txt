@@ -485,6 +485,20 @@ val width:Int=3
         (integer_literal)))))
 
 ================================================================================
+Class with empty primary constructor on new line
+================================================================================
+
+class Empty
+()
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (primary_constructor)))
+
+================================================================================
 Class with line comment before parenthesized constructor on new line
 ================================================================================
 
