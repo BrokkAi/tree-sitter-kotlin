@@ -433,6 +433,188 @@ public constructor(val a: Int)
           (type_identifier))))))
 
 ================================================================================
+Class with actual constructor on new line
+================================================================================
+
+class A<T>
+actual constructor(x: Int)
+
+class B actual constructor(y: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (type_parameters
+      (type_parameter
+        (type_identifier)))
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+Class with multi-line type parameters and actual constructor
+================================================================================
+
+class A<
+    T : Any
+    >
+actual constructor(x: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (type_parameters
+      (type_parameter
+        (type_identifier)
+        (user_type
+          (type_identifier))))
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+Class with expect constructor on new line
+================================================================================
+
+class A
+expect constructor(x: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+Class with comment around a constructor platform modifier
+================================================================================
+
+class A
+actual /* comment */ constructor(x: Int)
+
+class B
+// comment
+actual constructor(y: Int)
+
+class C
+/* comment */
+internal constructor(z: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (multiline_comment)
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (line_comment)
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (multiline_comment)
+    (primary_constructor
+      (modifiers
+        (visibility_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+Class with constructor keyword on the line after its modifier
+================================================================================
+
+class A
+actual
+constructor(x: Int)
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (primary_constructor
+      (modifiers
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))))
+
+================================================================================
+actual on a next-line declaration is not a constructor modifier
+================================================================================
+
+class A
+actual fun f() {}
+
+class B
+actual val x = 1
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier))
+  (function_declaration
+    (modifiers
+      (platform_modifier))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body))
+  (class_declaration
+    (type_identifier))
+  (property_declaration
+    (modifiers
+      (platform_modifier))
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (integer_literal)))
+
+================================================================================
 Generic class with constructor on new line
 ================================================================================
 

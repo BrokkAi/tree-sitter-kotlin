@@ -410,30 +410,44 @@ static bool followed_by_arrow(TSLexer *lexer) {
   return lexer->lookahead == '>';
 }
 
-// Check if the current position has a visibility modifier (public, private,
-// protected, internal) followed by whitespace/comments and "constructor".
-// Uses skip() — safe to call speculatively since no token boundary is changed.
-static bool check_modifier_then_constructor(TSLexer *lexer) {
-  // Buffer the first word to identify the modifier
-  char word[20];
+// Buffer the upcoming word (up to 19 chars) using skip() — pure lookahead,
+// no token boundary is changed.
+static unsigned buffer_word(TSLexer *lexer, char *word) {
   unsigned len = 0;
   while (is_word_char(lexer->lookahead) && len < 19) {
     word[len++] = (char)lexer->lookahead;
     skip(lexer);
   }
   word[len] = '\0';
+  return len;
+}
+
+// After a constructor modifier, check that 'constructor' follows past any
+// whitespace (including newlines) and comments. A bare '/' means this
+// cannot be a constructor. Uses skip() — pure lookahead.
+static bool check_constructor_after_modifier(TSLexer *lexer) {
+  if (!skip_whitespace_and_comments(lexer)) return false;
+  return check_word(lexer, "constructor", 11);
+}
+
+// Check if the current position has a constructor modifier (a visibility
+// modifier or the platform modifiers expect/actual) followed by
+// whitespace/comments and "constructor".
+// Uses skip() — safe to call speculatively since no token boundary is changed.
+static bool check_modifier_then_constructor(TSLexer *lexer) {
+  char word[20];
+  buffer_word(lexer, word);
 
   if (strcmp(word, "public") != 0 && strcmp(word, "private") != 0 &&
-      strcmp(word, "protected") != 0 && strcmp(word, "internal") != 0) {
+      strcmp(word, "protected") != 0 && strcmp(word, "internal") != 0 &&
+      strcmp(word, "expect") != 0 && strcmp(word, "actual") != 0) {
     return false;
   }
 
   // A constructor may follow the modifier on another line, with comments
   // between them. This is also used after constructor annotations, where
   // comments and newlines are valid between the modifier and constructor.
-  if (!skip_whitespace_and_comments(lexer)) return false;
-
-  return check_word(lexer, "constructor", 11);
+  return check_constructor_after_modifier(lexer);
 }
 
 // Look ahead past one or more annotations (e.g. @Bar, @com.example.Bar,
@@ -984,14 +998,42 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
               skip(lexer);
               if (lexer->lookahead == '=') return false;
               return true;
-            case 'e':
-              if (scan_for_word(lexer, "lse", 3)) {
+            case 'e': {
+              char word[20];
+              buffer_word(lexer, word);
+              if (strcmp(word, "else") == 0) {
                 if (followed_by_arrow(lexer)) return true;
                 return false;
               }
+              if (strcmp(word, "expect") == 0 &&
+                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_constructor_after_modifier(lexer)) {
+                return false;
+              }
               return true;
-            case 'a':
-              if (scan_for_word(lexer, "s", 1)) return false;
+            }
+            case 'a': {
+              char word[20];
+              buffer_word(lexer, word);
+              if (strcmp(word, "as") == 0) return false;
+              if (strcmp(word, "actual") == 0 &&
+                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_constructor_after_modifier(lexer)) {
+                return false;
+              }
+              return true;
+            }
+            case 'p':
+            case 'i':
+              // Constructor modifiers after a comment — same class-header
+              // continuation as in the main switch.
+              if (valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_modifier_then_constructor(lexer)) {
+                return false;
+              }
               return true;
             case 'w':
               if (scan_for_word(lexer, "here", 4)) return false;
@@ -1155,19 +1197,50 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
               // but the token has no advance()d content past the comment,
               // so tree-sitter will re-scan from here).
               return true;
-            case 'e':
+            case 'e': {
               lexer->mark_end(lexer);
-              if (scan_for_word(lexer, "lse", 3)) {
+              char word[20];
+              buffer_word(lexer, word);
+              if (strcmp(word, "else") == 0) {
                 if (followed_by_arrow(lexer)) return true;
                 lexer->result_symbol = MULTILINE_COMMENT;
                 return true;
               }
-              return true;
-            case 'a':
-              lexer->mark_end(lexer);
-              if (scan_for_word(lexer, "s", 1)) {
+              if (strcmp(word, "expect") == 0 &&
+                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_constructor_after_modifier(lexer)) {
                 lexer->result_symbol = MULTILINE_COMMENT;
                 return true;
+              }
+              return true;
+            }
+            case 'a': {
+              lexer->mark_end(lexer);
+              char word[20];
+              buffer_word(lexer, word);
+              if (strcmp(word, "as") == 0) {
+                lexer->result_symbol = MULTILINE_COMMENT;
+                return true;
+              }
+              if (strcmp(word, "actual") == 0 &&
+                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT] &&
+                  check_constructor_after_modifier(lexer)) {
+                lexer->result_symbol = MULTILINE_COMMENT;
+                return true;
+              }
+              return true;
+            }
+            case 'p':
+            case 'i':
+              if (valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+                  !valid_symbols[STRING_CONTENT]) {
+                lexer->mark_end(lexer);
+                if (check_modifier_then_constructor(lexer)) {
+                  lexer->result_symbol = MULTILINE_COMMENT;
+                  return true;
+                }
               }
               return true;
             case 'w':
@@ -1234,13 +1307,38 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
 
       // Don't insert a semicolon before an else, unless it's
       // followed by "->" (a when-entry's else, not an if-else).
-      case 'e':
-        if (!scan_for_word(lexer, "lse", 3)) return true;
-        return followed_by_arrow(lexer);
+      // Also don't insert one before `expect constructor` when the class
+      // header expects a primary constructor (BrokkAi/bifrost-dev#2842).
+      case 'e': {
+        char word[20];
+        buffer_word(lexer, word);
+        if (strcmp(word, "else") == 0) return followed_by_arrow(lexer);
+        if (strcmp(word, "expect") == 0 &&
+            valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+            !valid_symbols[STRING_CONTENT] &&
+            check_constructor_after_modifier(lexer)) {
+          return false;
+        }
+        return true;
+      }
 
-      // Don't insert a semicolon before an as
-      case 'a':
-        return !scan_for_word(lexer, "s", 1);
+      // Don't insert a semicolon before an as. Also don't insert one
+      // before `actual constructor` when the class header expects a primary
+      // constructor (BrokkAi/bifrost-dev#2842); a next-line declaration
+      // starting with `actual` (`actual fun f()`) still gets its semicolon
+      // because no 'constructor' keyword follows.
+      case 'a': {
+        char word[20];
+        buffer_word(lexer, word);
+        if (strcmp(word, "as") == 0) return false;
+        if (strcmp(word, "actual") == 0 &&
+            valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+            !valid_symbols[STRING_CONTENT] &&
+            check_constructor_after_modifier(lexer)) {
+          return false;
+        }
+        return true;
+      }
 
       // Don't insert a semicolon before a where
       case 'w':
