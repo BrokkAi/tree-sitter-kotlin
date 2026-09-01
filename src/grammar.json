@@ -613,6 +613,18 @@
           ]
         },
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "_constructor_paren_hint"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "SYMBOL",
           "name": "_class_parameters"
         }
@@ -8094,6 +8106,10 @@
     {
       "type": "SYMBOL",
       "name": "_annotation_args_paren"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_constructor_paren_hint"
     }
   ],
   "inline": [],
