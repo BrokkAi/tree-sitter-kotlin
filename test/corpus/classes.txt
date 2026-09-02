@@ -441,6 +441,15 @@ actual constructor(x: Int)
 
 class B actual constructor(y: Int)
 
+class C<T>
+actual public constructor(z: Int)
+
+class D<T>
+public actual constructor(z: Int)
+
+class E<T>
+actual @Deprecated("legacy") public constructor(z: Int)
+
 ---
 
 (source_file
@@ -461,6 +470,53 @@ class B actual constructor(y: Int)
     (primary_constructor
       (modifiers
         (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (type_parameters
+      (type_parameter
+        (type_identifier)))
+    (primary_constructor
+      (modifiers
+        (platform_modifier)
+        (visibility_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (type_parameters
+      (type_parameter
+        (type_identifier)))
+    (primary_constructor
+      (modifiers
+        (visibility_modifier)
+        (platform_modifier))
+      (class_parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))))
+  (class_declaration
+    (type_identifier)
+    (type_parameters
+      (type_parameter
+        (type_identifier)))
+    (primary_constructor
+      (modifiers
+        (platform_modifier)
+        (annotation
+          (constructor_invocation
+            (user_type
+              (type_identifier))
+            (value_arguments
+              (value_argument
+                (string_literal
+                  (string_content))))))
+        (visibility_modifier))
       (class_parameter
         (simple_identifier)
         (user_type
@@ -593,6 +649,9 @@ actual fun f() {}
 class B
 actual val x = 1
 
+class C
+public actual fun g() {}
+
 ---
 
 (source_file
@@ -612,7 +671,16 @@ actual val x = 1
     (binding_pattern_kind)
     (variable_declaration
       (simple_identifier))
-    (integer_literal)))
+    (integer_literal))
+  (class_declaration
+    (type_identifier))
+  (function_declaration
+    (modifiers
+      (visibility_modifier)
+      (platform_modifier))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body)))
 
 ================================================================================
 Generic class with constructor on new line

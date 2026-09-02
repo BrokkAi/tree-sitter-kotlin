@@ -422,17 +422,22 @@ static unsigned buffer_word(TSLexer *lexer, char *word) {
   return len;
 }
 
-// After a constructor modifier, check that 'constructor' follows past any
-// whitespace (including newlines) and comments. A bare '/' means this
-// cannot be a constructor. Uses skip() — pure lookahead.
+static bool check_modifier_then_constructor(TSLexer *lexer);
+static bool check_annotation_then_constructor(TSLexer *lexer);
+
+// After a constructor modifier, check that either "constructor" or another
+// constructor modifier follows past any whitespace and comments. A bare '/'
+// means this cannot be a constructor. Uses skip() — pure lookahead.
 static bool check_constructor_after_modifier(TSLexer *lexer) {
   if (!skip_whitespace_and_comments(lexer)) return false;
-  return check_word(lexer, "constructor", 11);
+  if (lexer->lookahead == '@') return check_annotation_then_constructor(lexer);
+  if (lexer->lookahead == 'c') return check_word(lexer, "constructor", 11);
+  return check_modifier_then_constructor(lexer);
 }
 
 // Check if the current position has a constructor modifier (a visibility
-// modifier or the platform modifiers expect/actual) followed by
-// whitespace/comments and "constructor".
+// modifier or the platform modifiers expect/actual) followed by any remaining
+// constructor modifiers and "constructor".
 // Uses skip() — safe to call speculatively since no token boundary is changed.
 static bool check_modifier_then_constructor(TSLexer *lexer) {
   char word[20];
@@ -444,15 +449,13 @@ static bool check_modifier_then_constructor(TSLexer *lexer) {
     return false;
   }
 
-  // A constructor may follow the modifier on another line, with comments
-  // between them. This is also used after constructor annotations, where
-  // comments and newlines are valid between the modifier and constructor.
   return check_constructor_after_modifier(lexer);
 }
 
 // Look ahead past one or more annotations (e.g. @Bar, @com.example.Bar,
-// @Bar(x=1)) and optional visibility modifier, then check for 'constructor'.
-// All characters are consumed with skip() so nothing affects token boundaries.
+// @Bar(x=1)) and any visibility/platform modifiers, then check for
+// "constructor". All characters are consumed with skip() so nothing affects
+// token boundaries.
 static bool check_annotation_then_constructor(TSLexer *lexer) {
   // Skip one or more '@annotation' sequences
   while (lexer->lookahead == '@') {
@@ -492,11 +495,9 @@ static bool check_annotation_then_constructor(TSLexer *lexer) {
     // so give up if the helper stops at one.
     if (!skip_whitespace_and_comments(lexer)) return false;
   }
-  // Allow an optional visibility modifier before 'constructor'
   if (is_word_char(lexer->lookahead) && lexer->lookahead != 'c') {
     return check_modifier_then_constructor(lexer);
   }
-  // Check directly for 'constructor'
   return check_word(lexer, "constructor", 11);
 }
 
