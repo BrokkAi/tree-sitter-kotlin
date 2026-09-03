@@ -21,6 +21,8 @@ enum TokenType {
   ACCESSOR_START,
   ANNOTATION_ARGS_PAREN,
   CONSTRUCTOR_PAREN_HINT,
+  SAME_LINE_BOUNDARY,
+  MODIFIER_RUN_HINT,
 };
 
 /* Pretty much all of this code is taken from the Julia tree-sitter
@@ -861,6 +863,71 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
     return false;
 
   if (sameline) {
+    // Kotlin needs no separator between declarations on one line when the
+    // previous one ends with a block ('object R { fun f() {} val x = 1 }',
+    // BrokkAi/tree-sitter-kotlin#14/#15). Where a _semi separator is
+    // expected, emit the zero-width SAME_LINE_BOUNDARY before a hard
+    // declaration keyword that starts the next member or statement (the
+    // member before the closing '}' needs no boundary: the trailing _semi
+    // is optional). Emission must be conservative: an external token
+    // preempts internal lexing for the whole state, so a word that could
+    // instead continue the previous construct (any soft keyword usable as
+    // an infix function name, 'catch', 'where', ...) must fall through to
+    // the internal lexer; hard declaration keywords can never continue one.
+    // MODIFIER_RUN_HINT (never emitted) flags a modifier or annotation run
+    // in progress: 'internal class C' must keep 'internal' as a modifier,
+    // so no boundary may split it from the keyword. Suppression, not a
+    // dynamic penalty, is required for that: in a merged GLR state the
+    // emitted external token preempts internal lexing outright, so the
+    // modifier reading would never even be explored.
+    // 'get (' / 'set (' keep their accessor reading: the word is already
+    // consumed via skip() and this scan cannot rewind for the later accessor
+    // check, so the accessor token is emitted from here (mark_end at scan
+    // entry keeps every token here zero-width at the boundary).
+    if (valid_symbols[SAME_LINE_BOUNDARY] && !valid_symbols[MODIFIER_RUN_HINT] &&
+        !valid_symbols[STRING_CONTENT]) {
+      int32_t c = lexer->lookahead;
+      // Words stay with the internal lexer while a primary constructor is
+      // expected: 'class B constructor(x: Int)' must keep its header
+      // reading, and the later PRIMARY_CONSTRUCTOR_KEYWORD branch needs an
+      // unconsumed stream. The guard covers every word, not just 'c': after
+      // buffer_word consumes a modifier like 'internal' with skip(), that
+      // branch would match the following 'constructor' and the modifier
+      // would vanish into skipped whitespace ('class C\n/* c */\ninternal
+      // constructor(z: Int)').
+      if (!valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+          (c == 'v' || c == 'f' || c == 'o' || c == 't' || c == 'i' ||
+           c == 'g' || c == 's' || c == 'c')) {
+        char word[20];
+        buffer_word(lexer, word);
+        if (strcmp(word, "val") == 0 || strcmp(word, "var") == 0 ||
+            strcmp(word, "fun") == 0 || strcmp(word, "class") == 0 ||
+            strcmp(word, "interface") == 0 || strcmp(word, "object") == 0 ||
+            strcmp(word, "typealias") == 0) {
+          lexer->result_symbol = SAME_LINE_BOUNDARY;
+          return true;
+        }
+        if (strcmp(word, "import") == 0) {
+          // Same-line ASI before 'import' (see the switch below); the word
+          // is already consumed here, so emit the semicolon directly.
+          return true;
+        }
+        if (valid_symbols[ACCESSOR_START] &&
+            (strcmp(word, "get") == 0 || strcmp(word, "set") == 0)) {
+          while (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+                 lexer->lookahead == '\f') {
+            skip(lexer);
+          }
+          if (lexer->lookahead == '(') {
+            lexer->result_symbol = ACCESSOR_START;
+            return true;
+          }
+        }
+        // The word was consumed with skip(); returning false discards this
+        // scan and the internal lexer re-reads from the token start.
+        return false;
+      }
+    }
     switch (lexer->lookahead) {
       // Insert imaginary semicolon before an 'import' but not in front
       // of other words or keywords starting with 'i'
