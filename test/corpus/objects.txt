@@ -119,3 +119,122 @@ class Second {}
   (class_declaration
     (type_identifier)
     (class_body)))
+
+================================================================================
+Single-line object with one member (issue #14)
+================================================================================
+
+object Registry { fun register() {} }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (object_declaration
+    (type_identifier)
+    (class_body
+      (function_declaration
+        (simple_identifier)
+        (function_value_parameters)
+        (function_body)))))
+
+================================================================================
+Multiline object body (regression pin for issue #14)
+================================================================================
+
+object Registry {
+    fun register() {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (object_declaration
+    (type_identifier)
+    (class_body
+      (function_declaration
+        (simple_identifier)
+        (function_value_parameters)
+        (function_body)))))
+
+================================================================================
+Single-line object with empty body (regression pin for issue #14)
+================================================================================
+
+object Registry {}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (object_declaration
+    (type_identifier)
+    (class_body)))
+
+================================================================================
+Bodyless object (regression pin for issue #14)
+================================================================================
+
+object Registry
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (object_declaration
+    (type_identifier)))
+
+================================================================================
+Single-line object with delegated header and one member (issue #14)
+================================================================================
+
+object Registry : Base { fun register() {} }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (object_declaration
+    (type_identifier)
+    (delegation_specifier
+      (user_type
+        (type_identifier)))
+    (class_body
+      (function_declaration
+        (simple_identifier)
+        (function_value_parameters)
+        (function_body)))))
+
+================================================================================
+Genuine infix expression stays an expression (issue #14)
+================================================================================
+
+val p = 1 to 2
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (infix_expression
+      (integer_literal)
+      (simple_identifier)
+      (integer_literal))))
+
+================================================================================
+Single-line object nested in a single-line class body (issue #15)
+================================================================================
+
+class A { object B { fun f() {} } }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (object_declaration
+        (type_identifier)
+        (class_body
+          (function_declaration
+            (simple_identifier)
+            (function_value_parameters)
+            (function_body)))))))

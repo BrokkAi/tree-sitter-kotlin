@@ -519,7 +519,18 @@ module.exports = grammar({
     // Class members
     // ==========
 
-    _class_member_declarations: $ => repeat1(seq($._class_member_declaration, $._semi)),
+    // The trailing _semi is optional so that a member can sit directly
+    // before the closing brace on the same line, e.g.
+    // `object Registry { fun register() {} }`. The external scanner only
+    // emits _automatic_semicolon at a newline or before ';'/EOF, so with a
+    // mandatory trailing _semi a single-line class body could never
+    // complete and the GLR fell back to a bogus infix-expression reading
+    // (BrokkAi/tree-sitter-kotlin#14). Same shape as `statements`.
+    _class_member_declarations: $ => seq(
+      $._class_member_declaration,
+      repeat(seq($._semi, $._class_member_declaration)),
+      optional($._semi),
+    ),
 
     _class_member_declaration: $ => choice(
       $._declaration,
