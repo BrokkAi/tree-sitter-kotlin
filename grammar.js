@@ -134,6 +134,11 @@ module.exports = grammar({
     // ordinary call/navigation on an identifier named `context`.
     [$.context_parameters, $.simple_identifier],
 
+    // Inside `context(...)`: a leading annotation can belong to a named
+    // parameter's prefix or to the type modifiers of an unnamed (legacy
+    // context-receiver) entry.
+    [$.context_parameter, $._type_modifier],
+
     // ambiguity between parameter modifiers in anonymous functions
     [$.parameter_modifiers, $._type_modifier],
 
@@ -1325,9 +1330,15 @@ module.exports = grammar({
 
     // KEEP-0367: `name: Type`; `_` is a valid simple_identifier already, and
     // parameters may carry annotations (`context(@A users: UserRepository)`).
-    context_parameter: $ => seq(
-      repeat($.annotation),
-      $.parameter
+    // The bare `_type` alternative additionally accepts the legacy
+    // context-receiver form `context(Type)` (Kotlin 1.6-2.1 experimental,
+    // still widespread in pre-2.2 code — BrokkAi/bifrost-dev#2930). The two
+    // alternatives do not overlap: the named one requires a ':' after the
+    // identifier, and annotations on an unnamed entry are covered by the
+    // type's own type_modifiers.
+    context_parameter: $ => choice(
+      seq(repeat($.annotation), $.parameter),
+      $._type
     ),
 
     type_modifiers: $ => repeat1($._type_modifier),
