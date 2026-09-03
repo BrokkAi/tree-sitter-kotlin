@@ -6506,18 +6506,27 @@
       ]
     },
     "context_parameter": {
-      "type": "SEQ",
+      "type": "CHOICE",
       "members": [
         {
-          "type": "REPEAT",
-          "content": {
-            "type": "SYMBOL",
-            "name": "annotation"
-          }
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "SYMBOL",
+                "name": "annotation"
+              }
+            },
+            {
+              "type": "SYMBOL",
+              "name": "parameter"
+            }
+          ]
         },
         {
           "type": "SYMBOL",
-          "name": "parameter"
+          "name": "_type"
         }
       ]
     },
@@ -7985,6 +7994,10 @@
     [
       "context_parameters",
       "simple_identifier"
+    ],
+    [
+      "context_parameter",
+      "_type_modifier"
     ],
     [
       "parameter_modifiers",

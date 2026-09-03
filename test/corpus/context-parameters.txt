@@ -197,7 +197,7 @@ context remains a valid identifier
 
 fun f() {
     context(x)
-    val context = 1
+    val ctx = context
     context.foo()
     context(x = 2)
     foo(context(y))
@@ -211,17 +211,16 @@ fun f() {
     (function_value_parameters)
     (function_body
       (statements
-        (call_expression
-          (simple_identifier)
-          (call_suffix
-            (value_arguments
-              (value_argument
-                (simple_identifier)))))
         (property_declaration
+          (modifiers
+            (context_parameters
+              (context_parameter
+                (user_type
+                  (type_identifier)))))
           (binding_pattern_kind)
           (variable_declaration
             (simple_identifier))
-          (integer_literal))
+          (simple_identifier))
         (call_expression
           (navigation_expression
             (simple_identifier)
@@ -247,3 +246,138 @@ fun f() {
                     (value_arguments
                       (value_argument
                         (simple_identifier)))))))))))))
+
+================================================================================
+Unnamed context parameter (legacy context receivers) in a class body
+================================================================================
+
+class A {
+    context(Context)
+    operator fun invoke() {
+    }
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (function_declaration
+        (modifiers
+          (context_parameters
+            (context_parameter
+              (user_type
+                (type_identifier))))
+          (function_modifier))
+        (simple_identifier)
+        (function_value_parameters)
+        (function_body)))))
+
+================================================================================
+Unnamed context parameters on top-level functions
+================================================================================
+
+context(Foo) fun f() {}
+
+context(List<String>) fun g() {}
+
+context(A, B) fun h() {}
+
+context(A,) fun t() {}
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (user_type
+            (type_identifier)))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body))
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection
+                (user_type
+                  (type_identifier))))))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body))
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (user_type
+            (type_identifier)))
+        (context_parameter
+          (user_type
+            (type_identifier)))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body))
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (user_type
+            (type_identifier)))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body)))
+
+================================================================================
+Annotated unnamed context parameter
+================================================================================
+
+context(@A Foo) fun m() {}
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (type_modifiers
+            (annotation
+              (user_type
+                (type_identifier))))
+          (user_type
+            (type_identifier)))))
+    (simple_identifier)
+    (function_value_parameters)
+    (function_body)))
+
+================================================================================
+Unnamed context receiver form before a declaration (trade-off pin)
+================================================================================
+
+class A {
+    context(x)
+    val y = 1
+}
+
+---
+
+(source_file
+  (class_declaration
+    (type_identifier)
+    (class_body
+      (property_declaration
+        (modifiers
+          (context_parameters
+            (context_parameter
+              (user_type
+                (type_identifier)))))
+        (binding_pattern_kind)
+        (variable_declaration
+          (simple_identifier))
+        (integer_literal)))))
