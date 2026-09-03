@@ -1,7 +1,7 @@
 [package]
 name = "brokk-tree-sitter-kotlin"
 description = "Brokk-maintained Kotlin grammar for the tree-sitter parsing library"
-version = "0.4.3"
+version = "0.4.4"
 keywords = ["incremental", "parsing", "kotlin"]
 categories = ["parser-implementations", "text-editors"]
 repository = "https://github.com/BrokkAi/tree-sitter-kotlin"
