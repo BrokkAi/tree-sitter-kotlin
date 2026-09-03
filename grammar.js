@@ -192,6 +192,8 @@ module.exports = grammar({
     $._accessor_start,
     $._annotation_args_paren,
     $._constructor_paren_hint,
+    $._same_line_boundary,
+    $._modifier_run_hint,
   ],
 
   extras: $ => [
@@ -292,7 +294,10 @@ module.exports = grammar({
       ),
       seq(
         optional($.modifiers),
-        "enum", "class",
+        // The hint marks 'enum' as a pending declaration prefix so the ASI
+        // scanner does not split 'enum class' with a _same_line_boundary;
+        // see the modifiers rule.
+        "enum", optional($._modifier_run_hint), "class",
         alias($.simple_identifier, $.type_identifier),
         optional($.type_parameters),
         optional($.primary_constructor),
@@ -665,7 +670,10 @@ module.exports = grammar({
       optional(';'),
     )),
 
-    getter: $ => prec.right(seq(
+    // The prec.dynamic pins the accessor reading of a bare modifier + 'get'
+    // / 'set' line ('private set' after a property) against the equally
+    // error-free infix-expression reading; PSI always reads the accessor.
+    getter: $ => prec.dynamic(1, prec.right(seq(
       optional($.modifiers),
       "get",
       optional(seq(
@@ -673,9 +681,9 @@ module.exports = grammar({
         optional(seq(":", $._type)),
         $.function_body
       ))
-    )),
+    ))),
 
-    setter: $ => prec.right(seq(
+    setter: $ => prec.dynamic(1, prec.right(seq(
       optional($.modifiers),
       "set",
       optional(seq(
@@ -685,7 +693,7 @@ module.exports = grammar({
         optional(seq(":", $._type)),
         $.function_body
       ))
-    )),
+    ))),
 
     parameters_with_optional_type: $ => seq("(", sep1($.parameter_with_optional_type, ","), ")"),
 
@@ -892,8 +900,20 @@ module.exports = grammar({
     )),
 
     // See also https://github.com/tree-sitter/tree-sitter/issues/160
-    // generic EOF/newline token
-    _semi: $ => $._automatic_semicolon,
+    // generic EOF/newline token.
+    //
+    // _same_line_boundary covers separators Kotlin does not spell at all:
+    // no ';' and no newline is required between declarations on one line
+    // when the previous one ends with a block ('object R { fun f() {} val
+    // x = 1 }', BrokkAi/tree-sitter-kotlin#15). The scanner emits it
+    // zero-width, same-line only, and only before a hard declaration
+    // keyword, which can start a declaration but can never continue the
+    // construct before it. It lives inside _semi rather than only in
+    // _class_member_declarations so every _semi context keeps an identical
+    // follow set; giving class bodies their own separator duplicated
+    // thousands of shared states and pushed parser.c past the 60 MiB CI
+    // limit.
+    _semi: $ => choice($._automatic_semicolon, $._same_line_boundary),
 
     assignment: $ => choice(
       prec.left(PREC.ASSIGNMENT, seq($.directly_assignable_expression, $._assignment_and_operator, $._expression)),
@@ -1129,7 +1149,10 @@ module.exports = grammar({
     ),
 
     anonymous_function: $ => prec.right(seq(
-      optional("suspend"),
+      // The hint marks 'suspend' as a pending modifier so the ASI scanner
+      // does not split 'suspend fun() {}' with a _same_line_boundary; see
+      // the modifiers rule.
+      optional(seq("suspend", optional($._modifier_run_hint))),
       "fun",
       optional(seq(sep1($._simple_user_type, "."), ".")), // TODO
       $.function_value_parameters,
@@ -1307,9 +1330,24 @@ module.exports = grammar({
     // Modifiers
     // ==========
 
-    modifiers: $ => prec.right(
-      repeat1(prec.right(PREC.MODIFIERS, choice($.annotation, $._modifier)))
-    ),
+    // _modifier_run_hint is never emitted by the scanner. Like
+    // _by_delegation_hint, it exists so valid_symbols flags the states where
+    // a modifier or annotation run is still in progress: there a following
+    // hard keyword ('internal class C', 'override fun f') belongs to this
+    // declaration, and the ASI scanner must not emit _same_line_boundary in
+    // front of it even though a parallel GLR head reads the modifier word as
+    // a complete expression statement.
+    // The prec.dynamic settles fork-split boundary ties: when an extra
+    // (e.g. a line comment) separates the GLR heads, each head lexes
+    // independently, so '@Marker internal class C' completes both as one
+    // modifier-led declaration and as an identifier-statement split via
+    // _same_line_boundary. The reading that keeps the modifiers must win.
+    // (A penalty on the boundary itself does not work: prec.dynamic on the
+    // hidden _semi choice is lost to inlining.)
+    modifiers: $ => prec.dynamic(1, prec.right(seq(
+      repeat1(prec.right(PREC.MODIFIERS, choice($.annotation, $._modifier))),
+      optional($._modifier_run_hint)
+    ))),
 
     parameter_modifiers: $ => repeat1(choice($.annotation, $.parameter_modifier)),
 
