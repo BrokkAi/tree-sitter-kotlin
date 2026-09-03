@@ -824,7 +824,112 @@ static BackingFieldLookahead scan_backing_field_lookahead(TSLexer *lexer) {
   }
 }
 
-static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) {
+// After comments following a line break have been skipped, decide whether an
+// automatic semicolon belongs before them. This keeps the line- and
+// block-comment paths consistent while retaining the fork's constructor and
+// explicit-backing-field lookahead.
+static bool asi_after_comment(TSLexer *lexer, const bool *valid_symbols) {
+  if (valid_symbols[BACKING_FIELD_HINT] &&
+      !valid_symbols[STRING_CONTENT] &&
+      (is_word_char(lexer->lookahead) || lexer->lookahead == '@')) {
+    BackingFieldLookahead lookahead = scan_backing_field_lookahead(lexer);
+    switch (lookahead) {
+      case BACKING_FIELD_MATCHED:
+      case BACKING_FIELD_FINALLY:
+        return false;
+      case BACKING_FIELD_ELSE:
+        return followed_by_arrow(lexer);
+      case BACKING_FIELD_AS:
+      case BACKING_FIELD_WHERE:
+      case BACKING_FIELD_CATCH:
+        return false;
+      case BACKING_FIELD_BY:
+        return !valid_symbols[BY_DELEGATION_HINT];
+      case BACKING_FIELD_CONSTRUCTOR:
+        return !valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD];
+      case BACKING_FIELD_NOT_MATCHED:
+        return true;
+    }
+  }
+
+  switch (lexer->lookahead) {
+    case '.': case ',': case ':': case '*': case '%':
+    case '>': case '<': case '=': case '{': case '[':
+    case '?': case '|': case '&': case '/':
+      return false;
+    case '(':
+      if (valid_symbols[CONSTRUCTOR_PAREN_HINT] &&
+          !valid_symbols[STRING_CONTENT] &&
+          check_constructor_param_colon(lexer)) {
+        return false;
+      }
+      return true;
+    case '!':
+      skip(lexer);
+      return lexer->lookahead != '=';
+    case 'e': {
+      char word[20];
+      buffer_word(lexer, word);
+      if (strcmp(word, "else") == 0) return followed_by_arrow(lexer);
+      if (strcmp(word, "expect") == 0 &&
+          valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+          !valid_symbols[STRING_CONTENT] &&
+          check_constructor_after_modifier(lexer)) {
+        return false;
+      }
+      return true;
+    }
+    case 'a': {
+      char word[20];
+      buffer_word(lexer, word);
+      if (strcmp(word, "as") == 0) return false;
+      if (strcmp(word, "actual") == 0 &&
+          valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+          !valid_symbols[STRING_CONTENT] &&
+          check_constructor_after_modifier(lexer)) {
+        return false;
+      }
+      return true;
+    }
+    case 'p':
+    case 'i':
+      if (valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+          !valid_symbols[STRING_CONTENT] &&
+          check_modifier_then_constructor(lexer)) {
+        return false;
+      }
+      return true;
+    case 'w':
+      return !scan_for_word(lexer, "here", 4);
+    case 'c':
+      if (!scan_for_word(lexer, "atch", 4)) return true;
+      if (!skip_whitespace_and_comments(lexer)) return true;
+      return lexer->lookahead != '(';
+    case 'b':
+      if (valid_symbols[BY_DELEGATION_HINT] &&
+          scan_for_word(lexer, "y", 1)) return false;
+      return true;
+    case 'f':
+      skip(lexer);
+      if (lexer->lookahead != 'i') return true;
+      skip(lexer);
+      if (lexer->lookahead == 'e' &&
+          valid_symbols[BACKING_FIELD_HINT] &&
+          !valid_symbols[STRING_CONTENT] &&
+          check_backing_field_shape(lexer)) {
+        return false;
+      }
+      if (!check_word(lexer, "nally", 5)) return true;
+      if (!skip_whitespace_and_comments(lexer)) return true;
+      return lexer->lookahead != '{';
+    default:
+      return true;
+  }
+}
+
+static bool scan_automatic_semicolon(TSLexer *lexer,
+                                     const bool *valid_symbols,
+                                     bool *cursor_clean) {
   lexer->result_symbol = AUTOMATIC_SEMICOLON;
   lexer->mark_end(lexer);
 
@@ -941,6 +1046,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
 
       // Don't insert a semicolon in other cases
       default:
+        *cursor_clean = true;
         return false;
     }
   }
@@ -984,6 +1090,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
       case '?':
       case '|':
       case '&':
+        *cursor_clean = true;
         return false;
 
       // Insert a semicolon before '(': Kotlin requires a call's argument
@@ -1007,9 +1114,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
       // real token. If continuation, suppress ASI (return false — tree-sitter
       // resets, parses line_comment internally, then re-checks ASI).
       // If non-continuation, insert ASI (return true at original mark_end).
-      // For block comments (`/*`): advance through the comment and produce
-      // MULTILINE_COMMENT. The parser then re-calls the scanner for the ASI
-      // decision on whatever token follows the comment.
+      // For ordinary terminated block comments, look past the comment and
+      // decide first; the internal multiline_comment fallback then supplies
+      // the correctly-spanned token when ASI is suppressed.
       case '/': {
         advance(lexer);
         if (lexer->lookahead == '/') {
@@ -1023,114 +1130,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
           // Skip any whitespace and further comments after this line comment.
           // A bare '/' (division) after comments is a continuation operator.
           if (!skip_whitespace_and_comments(lexer)) return false;
-          if (valid_symbols[BACKING_FIELD_HINT] &&
-              !valid_symbols[STRING_CONTENT] &&
-              (is_word_char(lexer->lookahead) || lexer->lookahead == '@')) {
-            BackingFieldLookahead lookahead = scan_backing_field_lookahead(lexer);
-            switch (lookahead) {
-              case BACKING_FIELD_MATCHED:
-              case BACKING_FIELD_FINALLY:
-                return false;
-              case BACKING_FIELD_ELSE:
-                return followed_by_arrow(lexer);
-              case BACKING_FIELD_AS:
-              case BACKING_FIELD_WHERE:
-              case BACKING_FIELD_CATCH:
-                return false;
-              case BACKING_FIELD_BY:
-                return !(valid_symbols[BY_DELEGATION_HINT]);
-              case BACKING_FIELD_CONSTRUCTOR:
-                return !(valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD]);
-              case BACKING_FIELD_NOT_MATCHED:
-                return true;
-            }
-          }
-          // Now check the next real token.
-          switch (lexer->lookahead) {
-            case '.': case ',': case ':': case '*': case '%':
-            case '>': case '<': case '=': case '{': case '[':
-            case '?': case '|': case '&': case '/':
-              return false;
-            case '(':
-              // Statement-initial paren: insert ASI (call parens must be on
-              // the callee's line), except after a class header where a
-              // constructor-shaped group continues the primary constructor.
-              // See the main switch below.
-              if (valid_symbols[CONSTRUCTOR_PAREN_HINT] &&
-                  !valid_symbols[STRING_CONTENT] &&
-                  check_constructor_param_colon(lexer)) {
-                return false;
-              }
-              return true;
-            case '!':
-              skip(lexer);
-              if (lexer->lookahead == '=') return false;
-              return true;
-            case 'e': {
-              char word[20];
-              buffer_word(lexer, word);
-              if (strcmp(word, "else") == 0) {
-                if (followed_by_arrow(lexer)) return true;
-                return false;
-              }
-              if (strcmp(word, "expect") == 0 &&
-                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
-                  !valid_symbols[STRING_CONTENT] &&
-                  check_constructor_after_modifier(lexer)) {
-                return false;
-              }
-              return true;
-            }
-            case 'a': {
-              char word[20];
-              buffer_word(lexer, word);
-              if (strcmp(word, "as") == 0) return false;
-              if (strcmp(word, "actual") == 0 &&
-                  valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
-                  !valid_symbols[STRING_CONTENT] &&
-                  check_constructor_after_modifier(lexer)) {
-                return false;
-              }
-              return true;
-            }
-            case 'p':
-            case 'i':
-              // Constructor modifiers after a comment — same class-header
-              // continuation as in the main switch.
-              if (valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
-                  !valid_symbols[STRING_CONTENT] &&
-                  check_modifier_then_constructor(lexer)) {
-                return false;
-              }
-              return true;
-            case 'w':
-              if (scan_for_word(lexer, "here", 4)) return false;
-              return true;
-            case 'c':
-              if (scan_for_word(lexer, "atch", 4)) return false;
-              return true;
-            case 'b':
-              if (valid_symbols[BY_DELEGATION_HINT] &&
-                  scan_for_word(lexer, "y", 1)) return false;
-              return true;
-            case 'f':
-              skip(lexer); // consume 'f'
-              if (lexer->lookahead == 'i') {
-                skip(lexer); // consume 'i'
-                if (lexer->lookahead == 'e' &&
-                    valid_symbols[BACKING_FIELD_HINT] &&
-                    !valid_symbols[STRING_CONTENT] &&
-                    check_backing_field_shape(lexer)) {
-                  // Explicit backing field after the comment — no ASI.
-                  return false;
-                }
-                // "fi" consumed; "finally" leaves "nally" to match.
-                return !check_word(lexer, "nally", 5);
-              }
-              return true;
-            default:
-              return true;
-          }
+          return asi_after_comment(lexer, valid_symbols);
         } else if (lexer->lookahead == '*') {
           // Block comment after a newline. Use advance() to read through the
           // comment so the content is available for MULTILINE_COMMENT if we
@@ -1139,6 +1139,8 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
           advance(lexer);
           unsigned nesting_depth = 1;
           bool after_star = false;
+          bool nested = false;
+          bool has_nul = false;
           while (nesting_depth > 0 && !lexer->eof(lexer)) {
             switch (lexer->lookahead) {
               case '*':
@@ -1153,6 +1155,7 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
                 } else {
                   if (lexer->lookahead == '*') {
                     nesting_depth++;
+                    nested = true;
                     advance(lexer);
                   }
                   after_star = false;
@@ -1165,12 +1168,17 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
                   lexer->mark_end(lexer);
                   return true;
                 }
+                has_nul = true;
                 // fallthrough
               default:
                 advance(lexer);
                 after_star = false;
                 break;
             }
+          }
+          if (!nested && !has_nul) {
+            if (!skip_whitespace_and_comments(lexer)) return false;
+            return asi_after_comment(lexer, valid_symbols);
           }
           // Skip whitespace after the block comment. Don't skip further
           // comments — the continuation switch handles '/' and '*', so
@@ -1462,7 +1470,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
           return true;
         }
         // Not in constructor context — check for 'catch'
-        return !scan_for_word(lexer, "atch", 4);
+        if (!scan_for_word(lexer, "atch", 4)) return true;
+        if (!skip_whitespace_and_comments(lexer)) return true;
+        return lexer->lookahead != '(';
 
       // Don't insert a semicolon before finally (continues try_expression),
       // and don't insert one before `field =` / `field: T =` when the parser
@@ -1484,7 +1494,9 @@ static bool scan_automatic_semicolon(TSLexer *lexer, const bool *valid_symbols) 
         // "fi" consumed; "finally" leaves "nally" to match. Any other word
         // (including a `field` without the backing-field shape) fails here
         // and gets a semicolon.
-        return !check_word(lexer, "nally", 5);
+        if (!check_word(lexer, "nally", 5)) return true;
+        if (!skip_whitespace_and_comments(lexer)) return true;
+        return lexer->lookahead != '{';
 
       // Don't insert a semicolon before an annotation that precedes 'constructor'
       // e.g. `class Foo\n@Bar\nconstructor(...)` — the @Bar is a constructor modifier
@@ -1676,10 +1688,14 @@ bool tree_sitter_kotlin_external_scanner_scan(void *payload, TSLexer *lexer, con
   // valid_symbols when the parser is in a delegation context. The scanner
   // never emits it; it's used only as a context flag in scan_automatic_semicolon.
   if (valid_symbols[AUTOMATIC_SEMICOLON]) {
-    bool ret = scan_automatic_semicolon(lexer, valid_symbols);
-    // if we fail to find an automatic semicolon, it's still possible that we may
-    // want to lex a string or comment later
+    bool cursor_clean = false;
+    bool ret = scan_automatic_semicolon(lexer, valid_symbols, &cursor_clean);
     if (ret) return ret;
+    // Keyword and comment lookahead uses skip(), which drags token_start. Do
+    // not let another scanner silently absorb skipped source as token padding.
+    // Error recovery is exempt: STRING_CONTENT and AUTOMATIC_SEMICOLON cannot
+    // both be valid in an ordinary parse state.
+    if (!cursor_clean && !valid_symbols[STRING_CONTENT]) return false;
   }
 
   if (valid_symbols[ACCESSOR_START] && !valid_symbols[STRING_CONTENT] &&
