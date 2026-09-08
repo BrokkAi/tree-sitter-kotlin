@@ -20,7 +20,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EMSCRIPTEN_VERSION: '3.1.55'
     steps:
@@ -30,13 +30,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: fwcd/tree-sitter-kotlin
-          ref: gh-pages
+          ref: 5383f6db289964a421f64847072556851c631c0a
           path: site
           persist-credentials: false
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '24'
+          node-version: '24.20.0'
           cache: npm
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
@@ -50,20 +50,15 @@ jobs:
       - name: Assemble the Brokk playground
         run: |
           version=$(node -p "require('./package.json').version")
-          runtime_version=$(node -p "require('./node_modules/tree-sitter-cli/package.json').version")
+          runtime_version=$(node -p "require('./node_modules/web-tree-sitter/package.json').version")
 
           rm -rf site/.git site/assets/tree-sitter-kotlin-* site/assets/web-tree-sitter-*
           mkdir -p "site/assets/tree-sitter-kotlin-$version"
           cp tree-sitter-kotlin.wasm "site/assets/tree-sitter-kotlin-$version/"
 
-          cd "${RUNNER_TEMP}"
-          npm pack "web-tree-sitter@$runtime_version"
-          mkdir web-tree-sitter
-          tar xzf web-tree-sitter-*.tgz -C web-tree-sitter
-          cd "${GITHUB_WORKSPACE}"
           mkdir -p "site/assets/web-tree-sitter-$runtime_version"
-          cp "${RUNNER_TEMP}/web-tree-sitter/package/tree-sitter.js" "site/assets/web-tree-sitter-$runtime_version/"
-          cp "${RUNNER_TEMP}/web-tree-sitter/package/tree-sitter.wasm" "site/assets/web-tree-sitter-$runtime_version/"
+          cp "node_modules/web-tree-sitter/tree-sitter.js" "site/assets/web-tree-sitter-$runtime_version/"
+          cp "node_modules/web-tree-sitter/tree-sitter.wasm" "site/assets/web-tree-sitter-$runtime_version/"
 
           sed -i "s|https://github.com/fwcd/tree-sitter-kotlin|https://github.com/BrokkAi/tree-sitter-kotlin|g" site/index.html
           sed -i "s|web-tree-sitter-[^/]*/tree-sitter\.js|web-tree-sitter-$runtime_version/tree-sitter.js|g" site/index.html

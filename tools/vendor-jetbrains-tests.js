@@ -63,7 +63,8 @@ function loadExcluded() {
  */
 function treeSitterParse(filePath) {
   try {
-    const output = execFileSync('npx', ['tree-sitter', 'parse', filePath], {
+    const treeSitter = path.join(REPO_ROOT, 'node_modules', '.bin', 'tree-sitter');
+    const output = execFileSync(treeSitter, ['parse', filePath], {
       cwd: REPO_ROOT,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
