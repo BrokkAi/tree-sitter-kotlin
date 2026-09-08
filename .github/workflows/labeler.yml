@@ -9,7 +9,7 @@ jobs:
       contents: read
       pull-requests: write
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     # Labeling is best-effort: on PRs that rewrite the generated src/parser.c,
     # GitHub's list-files API cannot generate the diff (HTTP 422) and the
