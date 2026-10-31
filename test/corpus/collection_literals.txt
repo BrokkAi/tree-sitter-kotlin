@@ -1,0 +1,15 @@
+==================
+empty collection literal default
+==================
+annotation class A(val xs: IntArray = [])
+---
+(source_file
+  (class_declaration
+    (modifiers (class_modifier))
+    (type_identifier)
+    (primary_constructor
+      (class_parameter
+        (binding_pattern_kind)
+        (simple_identifier)
+        (user_type (type_identifier))
+        (collection_literal)))))
