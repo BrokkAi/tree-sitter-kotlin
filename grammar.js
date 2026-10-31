@@ -1089,9 +1089,10 @@ module.exports = grammar({
     // https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-collectionLiteral
     collection_literal: $ => seq(
       "[",
-      $._expression,
-      repeat(seq(",", $._expression)),
-      optional(","),
+      optional(seq(
+        $._expression,
+        repeat(seq(",", $._expression)),
+        optional(","))),
       "]"),
 
     _literal_constant: $ => choice(
