@@ -4278,6 +4278,10 @@
       "required": true,
       "types": [
         {
+          "type": "context_parameters",
+          "named": true
+        },
+        {
           "type": "function_type",
           "named": true
         },
