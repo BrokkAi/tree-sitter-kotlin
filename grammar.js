@@ -799,6 +799,7 @@ module.exports = grammar({
     _type_projection_modifier: $ => $.variance_modifier,
 
     function_type: $ => seq(
+      optional($.context_parameters),
       optional(seq(field("receiver", $.receiver_type), ".")),
       $.function_type_parameters,
       "->",

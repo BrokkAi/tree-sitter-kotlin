@@ -1,0 +1,175 @@
+================================================================================
+One context type
+================================================================================
+
+fun <T, R> context(with: T, block: context(T) () -> R): R = block()
+
+---
+
+(source_file
+  (function_declaration
+    (type_parameters
+      (type_parameter
+        (type_identifier))
+      (type_parameter
+        (type_identifier)))
+    (simple_identifier)
+    (function_value_parameters
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (parameter
+        (simple_identifier)
+        (function_type
+          (context_parameters
+            (context_parameter
+              (user_type
+                (type_identifier))))
+          (function_type_parameters)
+          (user_type
+            (type_identifier)))))
+    (user_type
+      (type_identifier))
+    (function_body
+      (call_expression
+        (simple_identifier)
+        (call_suffix
+          (value_arguments))))))
+
+================================================================================
+Several context types
+================================================================================
+
+fun <A, B, R> context(a: A, b: B, block: context(A, B) () -> R): R = block()
+
+---
+
+(source_file
+  (function_declaration
+    (type_parameters
+      (type_parameter
+        (type_identifier))
+      (type_parameter
+        (type_identifier))
+      (type_parameter
+        (type_identifier)))
+    (simple_identifier)
+    (function_value_parameters
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)))
+      (parameter
+        (simple_identifier)
+        (function_type
+          (context_parameters
+            (context_parameter
+              (user_type
+                (type_identifier)))
+            (context_parameter
+              (user_type
+                (type_identifier))))
+          (function_type_parameters)
+          (user_type
+            (type_identifier)))))
+    (user_type
+      (type_identifier))
+    (function_body
+      (call_expression
+        (simple_identifier)
+        (call_suffix
+          (value_arguments))))))
+
+================================================================================
+Nullable parenthesized context function type
+================================================================================
+
+val f: (context(A) (B) -> C)? = null
+
+---
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier)
+      (nullable_type
+        (parenthesized_type
+          (function_type
+            (context_parameters
+              (context_parameter
+                (user_type
+                  (type_identifier))))
+            (function_type_parameters
+              (user_type
+                (type_identifier)))
+            (user_type
+              (type_identifier))))
+        (quest)))
+    (null_literal)))
+
+================================================================================
+Declaration context parameters
+================================================================================
+
+context(a: A, b: B) fun f(): C = TODO()
+
+---
+
+(source_file
+  (function_declaration
+    (modifiers
+      (context_parameters
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))
+        (context_parameter
+          (parameter
+            (simple_identifier)
+            (user_type
+              (type_identifier))))))
+    (simple_identifier)
+    (function_value_parameters)
+    (user_type
+      (type_identifier))
+    (function_body
+      (call_expression
+        (simple_identifier)
+        (call_suffix
+          (value_arguments))))))
+
+================================================================================
+Suspend context function type
+================================================================================
+
+val f: suspend context(A) (B) -> C = TODO()
+
+---
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier)
+      (type_modifiers)
+      (function_type
+        (context_parameters
+          (context_parameter
+            (user_type
+              (type_identifier))))
+        (function_type_parameters
+          (user_type
+            (type_identifier)))
+        (user_type
+          (type_identifier))))
+    (call_expression
+      (simple_identifier)
+      (call_suffix
+        (value_arguments)))))
