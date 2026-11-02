@@ -829,6 +829,13 @@ static BackingFieldLookahead scan_backing_field_lookahead(TSLexer *lexer) {
 // block-comment paths consistent while retaining the fork's constructor and
 // explicit-backing-field lookahead.
 static bool asi_after_comment(TSLexer *lexer, const bool *valid_symbols) {
+  if (lexer->lookahead == '@' &&
+      valid_symbols[PRIMARY_CONSTRUCTOR_KEYWORD] &&
+      !valid_symbols[STRING_CONTENT] &&
+      scan_backing_field_lookahead(lexer) == BACKING_FIELD_CONSTRUCTOR) {
+    return false;
+  }
+
   if (valid_symbols[BACKING_FIELD_HINT] &&
       !valid_symbols[STRING_CONTENT] &&
       (is_word_char(lexer->lookahead) || lexer->lookahead == '@')) {

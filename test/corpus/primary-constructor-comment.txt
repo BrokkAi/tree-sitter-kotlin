@@ -1,0 +1,52 @@
+===============================
+Annotated primary constructor after line comment
+===============================
+@JvmInline
+public value class Duration
+// Constructor is deprecated while the class remains public.
+@Deprecated("Use a factory", level = DeprecationLevel.ERROR)
+internal constructor(private val rawValue: Long) : Comparable<Duration> {}
+---
+
+(source_file
+  (class_declaration
+    (modifiers
+      (annotation
+        (user_type
+          (type_identifier)))
+      (visibility_modifier)
+      (class_modifier))
+    (type_identifier)
+    (line_comment)
+    (primary_constructor
+      (modifiers
+        (annotation
+          (constructor_invocation
+            (user_type
+              (type_identifier))
+            (value_arguments
+              (value_argument
+                (string_literal
+                  (string_content)))
+              (value_argument
+                (simple_identifier)
+                (navigation_expression
+                  (simple_identifier)
+                  (navigation_suffix
+                    (simple_identifier)))))))
+        (visibility_modifier))
+      (class_parameter
+        (modifiers
+          (visibility_modifier))
+        (binding_pattern_kind)
+        (simple_identifier)
+        (user_type
+          (type_identifier))))
+    (delegation_specifier
+      (user_type
+        (type_identifier)
+        (type_arguments
+          (type_projection
+            (user_type
+              (type_identifier))))))
+    (class_body)))
